@@ -26,7 +26,9 @@ def test_404(request):
 # home_view redirects to the login page if the user is not authenticated
 # and to the dashboard if the user is already logged in.
 def home(request):
-    return redirect('/admin/')
+    if request.COOKIES.get('admin_authenticated') == '1':
+        return redirect('accounts:dashboard')
+    return redirect('accounts:login_view')
 
 def login_view(request):
     if request.COOKIES.get('admin_authenticated') == '1':
