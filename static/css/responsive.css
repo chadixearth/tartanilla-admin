@@ -1,0 +1,196 @@
+/* Responsive Utilities for TarTrack Admin */
+
+/* Mobile First Approach */
+* {
+    box-sizing: border-box;
+}
+
+/* Ensure all containers are responsive */
+.container, .max-w-7xl, .max-w-6xl, .max-w-5xl {
+    width: 100%;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+/* Mobile Sidebar Toggle */
+@media (max-width: 768px) {
+    /* Hide sidebar by default on mobile */
+    .sidebar {
+        transform: translateX(-100%);
+    }
+    
+    /* Show sidebar when open */
+    .sidebar.open {
+        transform: translateX(0);
+    }
+    
+    /* Remove left margin on mobile */
+    .md\:ml-64, .md\:ml-\[280px\] {
+        margin-left: 0 !important;
+    }
+    
+    /* Full width tables on mobile */
+    table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Stack cards vertically */
+    .grid {
+        grid-template-columns: 1fr !important;
+    }
+    
+    /* Responsive text sizes */
+    h1 {
+        font-size: 1.5rem !important;
+    }
+    
+    h2 {
+        font-size: 1.25rem !important;
+    }
+    
+    h3 {
+        font-size: 1.125rem !important;
+    }
+    
+    /* Responsive padding */
+    .p-6 {
+        padding: 1rem !important;
+    }
+    
+    .px-6 {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+    
+    .py-6 {
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+    }
+    
+    /* Modal adjustments */
+    .modal-content, .max-w-2xl, .max-w-xl {
+        max-width: 95vw !important;
+        margin: 0.5rem !important;
+    }
+    
+    /* Button groups stack on mobile */
+    .flex.space-x-4, .flex.gap-4 {
+        flex-direction: column !important;
+        gap: 0.5rem !important;
+    }
+    
+    .flex.space-x-4 > *, .flex.gap-4 > * {
+        width: 100% !important;
+    }
+    
+    /* Charts responsive */
+    canvas {
+        max-width: 100% !important;
+        height: auto !important;
+    }
+}
+
+/* Tablet adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .container {
+        max-width: 100%;
+    }
+    
+    /* 2 column grid on tablets */
+    .grid.md\:grid-cols-4 {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+/* Ensure images are responsive */
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Responsive iframe (for maps, videos) */
+iframe {
+    max-width: 100%;
+}
+
+/* Touch-friendly buttons */
+@media (max-width: 768px) {
+    button, .btn, a.button {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 0.75rem 1rem;
+    }
+}
+
+/* Prevent horizontal scroll */
+body {
+    overflow-x: hidden;
+}
+
+/* Responsive form inputs */
+input, select, textarea {
+    max-width: 100%;
+}
+
+/* Mobile menu overlay */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9998;
+}
+
+.sidebar-overlay.active {
+    display: block;
+}
+
+/* Ensure modals are above sidebar */
+[role="dialog"] {
+    z-index: 10000 !important;
+}
+
+/* Responsive table wrapper */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Hide scrollbar but keep functionality */
+.table-responsive::-webkit-scrollbar {
+    height: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Print styles */
+@media print {
+    .sidebar, .no-print, button, .btn {
+        display: none !important;
+    }
+    
+    .md\:ml-64, .md\:ml-\[280px\] {
+        margin-left: 0 !important;
+    }
+    
+    body {
+        font-size: 12pt;
+    }
+}

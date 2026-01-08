@@ -1,0 +1,946 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Drivers</title>
+  <!-- Tailwind v2 -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css">
+
+  <style>
+    /* subtle table glow on hover */
+    .row-card:hover { box-shadow: 0 2px 18px rgba(0,0,0,.06); }
+    /* sticky header shadow when scrolling */
+    .thead-shadow::after{
+      content:"";
+      position:absolute;
+      left:0; right:0; bottom:-1px; height:1px;
+      background:linear-gradient(to right, rgba(0,0,0,.08), rgba(0,0,0,.02), rgba(0,0,0,.08));
+    }
+    /* smooth inputs */
+    input, select { transition: box-shadow .2s, border-color .2s, background-color .2s; }
+    /* status pills */
+    .pill { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium; }
+    /* custom scrollbar for modal */
+    .modal-scroll::-webkit-scrollbar { width: 6px; }
+    .modal-scroll::-webkit-scrollbar-track { background: transparent; }
+    .modal-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    .modal-scroll::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+  </style>
+</head>
+<body class="p-0 md:p-4 ml-5 bg-gray-50">
+  {% include 'base.html' %}
+
+  <div class="flex flex-col md:ml-64 pt-4 px-4 pb-4 md:pt-6 md:px-6 md:pb-2">
+    <div class="bg-white rounded-none md:rounded-2xl border border-[#531B24] w-full overflow-hidden">
+
+      <!-- Top bar -->
+      <div class="px-4 md:px-6 pt-4 md:pt-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h2 class="text-2xl md:text-3xl font-semibold tracking-tight text-[#531B24]">Drivers</h2>
+            <p class="text-sm text-[#531B24] opacity-70">Registered drivers</p>
+          </div>
+
+          <!-- Tools -->
+          <div class="w-full md:w-auto flex flex-col sm:flex-row gap-2 sm:items-center">
+            <!-- Export PDF Button -->
+            <a href="{% url 'accounts:export_users_pdf' %}" 
+               class="inline-flex items-center px-3 py-2 text-sm bg-[#531B24] text-white rounded-xl hover:bg-[#6B2332] transition-colors">
+              <i class="fas fa-file-pdf mr-2"></i>Export PDF
+            </a>
+            <!-- Search with clear -->
+            <div class="relative text-sm w-full sm:w-64">
+              <input
+                type="text"
+                placeholder="Search name, email or phone…"
+                id="search-input"
+                class="pl-10 pr-9 py-2 w-full h-8 rounded-xl border border-[#531B24] focus:outline-none focus:ring-1 focus:ring-[#531B24] focus:border-[#531B24] bg-white"
+              />
+              <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-[#531B24]"></i>
+              <button
+                id="clear-search"
+                class="hidden absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                aria-label="Clear search"
+              >
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+
+            <!-- Status -->
+            <div class="text-sm">
+              <select id="status-filter"
+                class="pl-3 pr-8 h-8 rounded-xl border border-[#531B24] text-gray-700 focus:outline-none focus:ring-1 focus:ring-[#531B24] bg-white">
+                <option value="">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Suspended">Suspended</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+
+            <!-- Sort (kept for parity; still server-controlled unless you wire it) -->
+            <div class="text-sm">
+              <select id="sort-filter"
+                class="pl-3 pr-8 h-8 rounded-xl border border-[#531B24] text-gray-700 focus:outline-none focus:ring-1 focus:ring-[#531B24] bg-white">
+                <option>Newest</option>
+                <option>Oldest</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table wrapper -->
+      <div class="px-4 md:px-6 pb-4 md:pb-6">
+        <div class="overflow-x-auto rounded-xl mt-4 text-sm">
+          <div class="border border-gray-200 rounded-xl overflow-hidden">
+            <table class="min-w-full">
+              <thead class="bg-gray-100 relative thead-shadow">
+                <tr class="text-gray-600 text-xs uppercase tracking-wide">
+                  <th class="px-4 py-3 text-left">User</th>
+                  <th class="px-4 py-3 text-left">Email</th>
+                  <th class="px-4 py-3 text-left">Role</th>
+                  <th class="px-4 py-3 text-left">Status</th>
+                  <th class="px-4 py-3 text-left">Phone</th>
+                  <th class="px-4 py-3 text-left">Address</th>
+                  <th class="px-4 py-3 text-center">Action</th>
+                </tr>
+              </thead>
+
+              <tbody id="drivers-tbody" class="bg-white divide-y divide-gray-100">
+                {% for driver in drivers %}
+                <tr
+                  class="driver-row hover:bg-gray-50 transition row-card"
+                  data-name="{{ driver.last_name }}, {{ driver.first_name }}"
+                  data-email="{{ driver.email }}"
+                  data-phone="{{ driver.phone }}"
+                  data-status="{{ driver.status }}"
+                >
+                  <!-- User (photo + name) -->
+                  <td class="px-4 py-3">
+                    <div class="flex items-center gap-3">
+                      {% if driver.profile_photo %}
+                        <img src="{{ driver.profile_photo.url }}" alt="Profile"
+                             class="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm">
+                      {% else %}
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-gray-600 font-semibold border border-gray-200">
+                          <span class="text-xs">
+                            {{ driver.first_name|slice:":1" }}{{ driver.last_name|slice:":1" }}
+                          </span>
+                        </div>
+                      {% endif %}
+                      <div>
+                        <div class="font-medium text-gray-800">
+                          {{ driver.last_name }}, {{ driver.first_name }}
+                        </div>
+                        <div class="text-xs text-gray-500">
+                          @{{ driver.first_name }}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+
+                  <!-- Email -->
+                  <td class="px-4 py-3 text-gray-700">
+                    <a href="mailto:{{ driver.email }}" class="hover:underline">{{ driver.email }}</a>
+                  </td>
+
+                  <!-- Role (pill) -->
+                  <td class="px-4 py-3">
+                    <span class="pill text-gray-700">
+                      <i class="fas fa-id-badge mr-1 opacity-75"></i>{{ driver.role }}
+                    </span>
+                  </td>
+
+                  <!-- Status (colored pill) -->
+                  <td class="px-4 py-3">
+                    {% if driver.status == 'Active' %}
+                      <span class="pill text-green-700">
+                        <i class="fas fa-circle mr-1 text-green-500 text-[8px]"></i> Active
+                      </span>
+                    {% elif driver.status == 'Suspended' %}
+                      <span class="pill text-red-700">
+                        <i class="fas fa-ban mr-1"></i> Suspended
+                      </span>
+                    {% else %}
+                      <span class="pill text-yellow-700">
+                        <i class="fas fa-pause mr-1"></i> Inactive
+                      </span>
+                    {% endif %}
+                  </td>
+
+                  <!-- Phone -->
+                  <td class="px-4 py-3 text-gray-700">
+                    <a class="hover:underline" href="tel:{{ driver.phone }}">{{ driver.phone }}</a>
+                  </td>
+
+                  <!-- Address -->
+                  <td class="px-4 py-3 text-gray-700">
+                    <span class="text-sm">{{ driver.address|default:"N/A" }}</span>
+                  </td>
+
+                  <!-- Actions -->
+                  <td class="px-4 py-3">
+                    <div class="flex items-center justify-center space-x-3">
+                      <!-- Details -->
+                      <button
+                        onclick="openModal(this)"
+                        class="inline-flex items-center justify-center text-gray-600 hover:text-[#531B24] focus:outline-none"
+                        title="View details"
+                        aria-label="View details for {{ driver.first_name }} {{ driver.last_name }}"
+                        data-id="{{ driver.id }}"
+                        data-firstname="{{ driver.first_name }}"
+                        data-lastname="{{ driver.last_name }}"
+                        data-role="{{ driver.role }}"
+                        data-phone="{{ driver.phone }}"
+                        data-status="{{ driver.status }}"
+                        data-email="{{ driver.email }}"
+                        data-address="{{ driver.address }}"
+                        data-dob="{{ driver.date_of_birth }}"
+                        data-profile-photo="{% if driver.profile_photo %}{{ driver.profile_photo.url }}{% endif %}"
+                        data-suspended-until="{{ driver.suspended_until|default:'' }}"
+                        data-suspended-by="{{ driver.suspended_by|default:'' }}"
+                        data-suspension-reason="{{ driver.suspension_reason|default:'' }}"
+                        data-suspended-at="{{ driver.suspended_at|default:'' }}"
+                      >
+                        <i class="fas fa-eye"></i>
+                      </button>
+
+                      <!-- Assigned tartanillas -->
+                      <button
+                        class="inline-flex items-center justify-center text-gray-600 hover:text-[#531B24] focus:outline-none"
+                        onclick="openTartanillasModal(this)"
+                        title="Assigned tartanillas"
+                        aria-label="View assigned tartanillas for {{ driver.first_name }} {{ driver.last_name }}"
+                        data-id="{{ driver.id }}"
+                        data-drivername="{{ driver.last_name }}, {{ driver.first_name }}"
+                      >
+                        <i class="fas fa-horse-head"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr id="server-empty">
+                  <td colspan="7" class="px-4 py-8 text-center">
+                    <div class="flex flex-col items-center justify-center text-gray-500">
+                      <i class="far fa-smile-beam text-3xl mb-2"></i>
+                      <p class="font-medium">No drivers found.</p>
+                      <p class="text-xs">Try adjusting filters or add a new driver.</p>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+
+                <!-- Client-side empty state -->
+                <tr id="no-results-drivers" class="hidden">
+                  <td colspan="7" class="px-4 py-8 text-center">
+                    <div class="flex flex-col items-center justify-center text-gray-500">
+                      <i class="fas fa-search text-3xl mb-2"></i>
+                      <p class="font-medium">No matching drivers</p>
+                      <button
+                        id="reset-filters"
+                        class="mt-2 px-3 py-1.5 rounded-lg border text-gray-700 hover:bg-gray-50"
+                      >
+                        Reset filters
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="flex flex-col sm:flex-row justify-between items-center mt-4 text-sm text-gray-600 gap-2">
+          <span id="pagination-info">Showing entries</span>
+          <div class="flex items-center space-x-2" id="pagination-container">
+            <!-- Pagination buttons will be inserted here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Details Modal (driver) -->
+  <div id="DetailsModal"
+       role="dialog" aria-modal="true" aria-labelledby="details-modal-title"
+       class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 ml-64">
+    <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] shadow-2xl transform transition-all duration-300 scale-95 opacity-0 modal-content relative flex flex-col">
+      <!-- Close Button -->
+      <button onclick="closeModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full hover:bg-red-50 flex items-center justify-center text-[#531B24] hover:text-red-600 transition-colors z-10" aria-label="Close">
+        <i class="fas fa-times text-sm"></i>
+      </button>
+
+      <!-- Profile Section (Sticky) -->
+      <div class="p-6 pb-0 flex-shrink-0">
+        <div class="flex items-center space-x-6 p-4 bg-gray-50 rounded-xl">
+          <div class="relative">
+            <img id="modal-profile-photo" src="{% static 'img/tartrack_colored.png' %}" alt="Profile" class="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg">
+            <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
+              <i class="fas fa-check text-white text-xs"></i>
+            </div>
+          </div>
+          <div class="flex-1">
+            <div class="flex items-center space-x-2 mb-1">
+              <h4 class="text-lg font-semibold text-gray-800" id="modal-full-name"></h4>
+              <span id="modal-status-badge" class="px-2 py-1 rounded-full text-xs font-medium"></span>
+            </div>
+            <p class="text-gray-600 text-sm" id="modal-email-display"></p>
+            <p class="text-gray-500 text-xs" id="modal-role-display"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scrollable Content -->
+      <div id="modal-content-area" class="flex-1 px-6 pb-6">
+        <!-- Information Grid -->
+        <div class="mt-6 space-y-6">
+          <!-- Personal Information -->
+          <div class="bg-white border border-gray-200 rounded-xl p-3">
+            <h6 class="text-sm font-semibold text-gray-800 mb-4 flex items-center">
+              <i class="fas fa-user mr-2 text-[#531B24]"></i>
+              Personal Information
+            </h6>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="space-y-3">
+                <div class="flex flex-col">
+                  <span class="text-xs text-gray-500 mb-1">Driver ID</span>
+                  <span class="text-sm font-medium text-gray-800" id="modal-id-display"></span>
+                </div>
+                <div class="flex flex-col">
+                  <span class="text-xs text-gray-500 mb-1">First Name</span>
+                  <span class="text-sm font-medium text-gray-800" id="modal-firstname-display"></span>
+                </div>
+              </div>
+              <div class="space-y-3">
+                <div class="flex flex-col">
+                  <span class="text-xs text-gray-500 mb-1">Last Name</span>
+                  <span class="text-sm font-medium text-gray-800" id="modal-lastname-display"></span>
+                </div>
+                <div class="flex flex-col">
+                  <span class="text-xs text-gray-500 mb-1">Date of Birth</span>
+                  <span class="text-sm font-medium text-gray-800" id="modal-dob-display"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contact Information -->
+          <div class="bg-white border border-gray-200 rounded-xl p-4">
+            <h6 class="text-sm font-semibold text-gray-800 mb-4 flex items-center">
+              <i class="fas fa-address-book mr-2 text-[#531B24]"></i>
+              Contact Information
+            </h6>
+            <div class="space-y-3">
+              <div class="flex flex-col">
+                <span class="text-xs text-gray-500 mb-1">Phone Number</span>
+                <a href="#" class="text-sm font-medium text-[#531B24] hover:underline" id="modal-phone-display"></a>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-xs text-gray-500 mb-1">Email Address</span>
+                <a href="#" class="text-sm font-medium text-[#531B24] hover:underline" id="modal-email-link"></a>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-xs text-gray-500 mb-1">Address</span>
+                <span class="text-sm font-medium text-gray-800" id="modal-address-display"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status Management -->
+        <div class="mt-3 p-4 bg-gray-50 rounded-xl">
+          <div class="flex items-center justify-between">
+            <div>
+              <h5 class="text-sm font-medium text-gray-800 mb-1">Account Status</h5>
+              <p class="text-xs text-gray-500">Manage driver account status and permissions</p>
+            </div>
+            <button id="suspend-button" onclick="toggleSuspension(); scrollToSuspensionForm()" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors prevent-multiple-clicks" data-prevent-multiple>
+              <span class="btn-text">Suspend</span>
+              <span class="btn-loading hidden">
+                <i class="fas fa-spinner fa-spin mr-2"></i>Processing...
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Current Suspension Info -->
+        <div id="current-suspension-info" class="mt-4 hidden">
+          <div class="bg-red-50 border border-red-200 rounded-xl p-4">
+            <div class="flex items-center space-x-2 mb-3">
+              <i class="fas fa-exclamation-triangle text-red-500"></i>
+              <h5 class="text-red-800 font-medium">Current Suspension</h5>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div class="space-y-2">
+                <div class="flex justify-between">
+                  <span class="text-red-700">Until:</span>
+                  <span id="current-suspended-until" class="text-red-600 font-medium"></span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-red-700">By:</span>
+                  <span id="current-suspended-by" class="text-red-600 font-medium"></span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-red-700">On:</span>
+                  <span id="current-suspended-at" class="text-red-600 font-medium"></span>
+                </div>
+              </div>
+              <div class="space-y-2">
+                <div>
+                  <span class="text-red-700 block">Reason:</span>
+                  <p id="current-suspension-reason" class="text-red-600 text-xs mt-1"></p>
+                </div>
+                <div>
+                  <span class="text-red-700 block">Time Remaining:</span>
+                  <p id="current-time-remaining" class="text-red-600 font-semibold text-xs mt-1"></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Suspension Form -->
+        <div id="suspension-details" class="mt-4 hidden">
+          <div class="bg-red-50 border border-red-200 rounded-xl p-4">
+            <h5 class="text-red-800 font-medium mb-4">Suspend Account</h5>
+            <div class="space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-red-700 text-sm font-medium mb-2">Duration</label>
+                  <select id="suspension-duration" class="w-full bg-white rounded-lg px-3 py-2 border border-red-300 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                    <option value="1">1 Day</option>
+                    <option value="3">3 Days</option>
+                    <option value="7" selected>1 Week</option>
+                    <option value="14">2 Weeks</option>
+                    <option value="30">1 Month</option>
+                    <option value="90">3 Months</option>
+                    <option value="365">1 Year</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
+                <div id="custom-duration-container" class="hidden">
+                  <label class="block text-red-700 text-sm font-medium mb-2">Custom Days</label>
+                  <input type="number" id="custom-duration" min="1" max="3650" class="w-full bg-white rounded-lg px-3 py-2 border border-red-300 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                </div>
+              </div>
+              <div>
+                <label class="block text-red-700 text-sm font-medium mb-2">Reason</label>
+                <textarea id="suspension-reason" rows="3" placeholder="Enter reason for suspension..."
+                  class="w-full bg-white rounded-lg px-3 py-2 border border-red-300 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-500"></textarea>
+              </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+              <button onclick="cancelSuspension()" class="px-4 py-2 text-gray-600 hover:text-gray-800 text-sm font-medium transition-colors">
+                Cancel
+              </button>
+              <button onclick="confirmSuspension()" id="confirmSuspensionBtn" class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 text-sm font-medium transition-colors prevent-multiple-clicks" data-prevent-multiple>
+                <span class="btn-text">Confirm Suspension</span>
+                <span class="btn-loading hidden">
+                  <i class="fas fa-spinner fa-spin mr-2"></i>Suspending...
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Assigned Tartanillas Modal -->
+  <div id="TartanillasModal"
+       role="dialog" aria-modal="true" aria-labelledby="tartanillas-modal-title"
+       class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-start justify-center p-4 md:ml-64">
+    <div class="bg-white rounded-2xl w-[95%] md:w-[1000px] my-10 max-h-[85vh] p-6 flex flex-col overflow-hidden relative">
+      <button onclick="closeTartanillasModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-xl" aria-label="Close">&times;</button>
+      <h3 id="tartanillas-modal-title" class="text-xl font-semibold mb-2">Assigned Tartanillas</h3>
+      <div id="tartanillas-driver-label" class="text-sm text-gray-600 mb-3"></div>
+
+      <div class="overflow-auto flex-1 border rounded-xl">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+          <thead class="bg-gray-50 sticky top-0">
+            <tr class="text-left text-gray-600">
+              <th class="px-3 py-2">ID</th>
+              <th class="px-3 py-2">Name</th>
+              <th class="px-3 py-2">Code / Plate</th>
+              <th class="px-3 py-2">Owner</th>
+              <th class="px-3 py-2">Status</th>
+              <th class="px-3 py-2">Details</th>
+            </tr>
+          </thead>
+          <tbody id="tartanillas-body" class="divide-y divide-gray-100">
+            <tr id="tartanillas-loading" class="hidden">
+              <td colspan="6" class="px-3 py-4 text-center text-gray-500">Loading...</td>
+            </tr>
+            <tr id="tartanillas-error" class="hidden">
+              <td colspan="6" class="px-3 py-4 text-center text-red-600">Failed to load tartanillas. Please try again.</td>
+            </tr>
+            <tr id="tartanillas-empty" class="hidden">
+              <td colspan="6" class="px-3 py-4 text-center text-gray-500">No tartanillas assigned.</td>
+            </tr>
+            <!-- Dynamic rows injected here -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="{% static 'js/sidebar.js' %}"></script>
+  <script>
+    let currentUserId = null;
+    let currentUserStatus = null;
+
+    // scroll lock
+    function lockBodyScroll(){ document.documentElement.classList.add('overflow-hidden'); }
+    function unlockBodyScroll(){ document.documentElement.classList.remove('overflow-hidden'); }
+
+    // Debounce helper for search
+    function debounce(fn, delay=200){
+      let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn.apply(this,args), delay); };
+    }
+
+    // ======== Driver Details Modal (same behavior, driver endpoints) ========
+    function openModal(btn) {
+      currentUserId = btn.getAttribute('data-id');
+      currentUserStatus = btn.getAttribute('data-status');
+
+      const firstName = btn.getAttribute('data-firstname');
+      const lastName = btn.getAttribute('data-lastname');
+      const email = btn.getAttribute('data-email');
+      const phone = btn.getAttribute('data-phone');
+      const role = btn.getAttribute('data-role');
+      const address = btn.getAttribute('data-address');
+      const dob = btn.getAttribute('data-dob');
+
+      // Update profile section
+      document.getElementById('modal-full-name').textContent = `${firstName} ${lastName}`;
+      document.getElementById('modal-email-display').textContent = email;
+      document.getElementById('modal-role-display').textContent = role;
+      
+      // Update information displays
+      document.getElementById('modal-id-display').textContent = currentUserId;
+      document.getElementById('modal-firstname-display').textContent = firstName;
+      document.getElementById('modal-lastname-display').textContent = lastName;
+      document.getElementById('modal-dob-display').textContent = dob || 'Not provided';
+      document.getElementById('modal-phone-display').textContent = phone;
+      document.getElementById('modal-phone-display').href = `tel:${phone}`;
+      document.getElementById('modal-email-link').textContent = email;
+      document.getElementById('modal-email-link').href = `mailto:${email}`;
+      document.getElementById('modal-address-display').textContent = address || 'Not provided';
+
+      // Update status badge
+      const statusBadge = document.getElementById('modal-status-badge');
+      statusBadge.textContent = currentUserStatus;
+      statusBadge.className = 'px-2 py-1 rounded-full text-xs font-medium ';
+      if (currentUserStatus === 'Active') {
+        statusBadge.className += 'bg-green-100 text-green-800';
+      } else if (currentUserStatus === 'Suspended') {
+        statusBadge.className += 'bg-red-100 text-red-800';
+      } else {
+        statusBadge.className += 'bg-yellow-100 text-yellow-800';
+      }
+
+      const profilePhoto = btn.getAttribute('data-profile-photo');
+      const modalPhoto = document.getElementById('modal-profile-photo');
+      modalPhoto.src = profilePhoto && profilePhoto !== '' ? profilePhoto : "{% static 'img/tartrack_colored.png' %}";
+
+      if (currentUserStatus === 'Suspended') { showCurrentSuspensionInfo(btn); } else { hideCurrentSuspensionInfo(); }
+      updateSuspendButton();
+
+      // Show modal with animation
+      const modal = document.getElementById('DetailsModal');
+      const modalContent = modal.querySelector('.modal-content');
+      modal.classList.remove('hidden');
+      lockBodyScroll();
+      
+      // Trigger animation
+      setTimeout(() => {
+        modalContent.classList.remove('scale-95', 'opacity-0');
+        modalContent.classList.add('scale-100', 'opacity-100');
+      }, 10);
+    }
+    
+    function closeModal() {
+      const modal = document.getElementById('DetailsModal');
+      const modalContent = modal.querySelector('.modal-content');
+      
+      // Animate out
+      modalContent.classList.remove('scale-100', 'opacity-100');
+      modalContent.classList.add('scale-95', 'opacity-0');
+      
+      setTimeout(() => {
+        modal.classList.add('hidden');
+        cancelSuspension(); hideCurrentSuspensionInfo();
+        currentUserId = null; currentUserStatus = null;
+        unlockBodyScroll();
+      }, 200);
+    }
+
+    function showCurrentSuspensionInfo(btn) {
+      const suspendedUntil   = btn.getAttribute('data-suspended-until');
+      const suspendedBy      = btn.getAttribute('data-suspended-by');
+      const suspensionReason = btn.getAttribute('data-suspension-reason');
+      const suspendedAt      = btn.getAttribute('data-suspended-at');
+
+      if (suspendedUntil) {
+        document.getElementById('current-suspended-until').textContent = formatDateTime(suspendedUntil);
+        document.getElementById('current-suspended-by').textContent    = suspendedBy || 'Unknown';
+        document.getElementById('current-suspension-reason').textContent = suspensionReason || 'No reason provided';
+        document.getElementById('current-suspended-at').textContent    = formatDateTime(suspendedAt);
+        document.getElementById('current-time-remaining').textContent  = calculateTimeRemaining(suspendedUntil);
+
+        document.getElementById('current-suspension-info').classList.remove('hidden');
+        enableModalScroll();
+        document.getElementById('current-suspension-info').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+    function hideCurrentSuspensionInfo() { 
+      document.getElementById('current-suspension-info').classList.add('hidden');
+      disableModalScroll();
+    }
+    function formatDateTime(isoString) {
+      if (!isoString) return 'N/A';
+      const date = new Date(isoString);
+      return date.toLocaleString('en-US',{ year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    }
+    function calculateTimeRemaining(suspendedUntil) {
+      if (!suspendedUntil) return 'N/A';
+      const endDate = new Date(suspendedUntil); const now = new Date();
+      const diff = endDate - now; if (diff <= 0) return 'Expired';
+      const d = Math.floor(diff/86400000), h = Math.floor((diff%86400000)/3600000), m = Math.floor((diff%3600000)/60000);
+      if (d>0) return `${d} day${d!==1?'s':''}, ${h} hour${h!==1?'s':''}`;
+      if (h>0) return `${h} hour${h!==1?'s':''}, ${m} minute${m!==1?'s':''}`;
+      return `${m} minute${m!==1?'s':''} remaining`;
+    }
+    function updateSuspendButton() {
+      const btn = document.getElementById('suspend-button');
+      const btnText = btn.querySelector('.btn-text');
+      if (currentUserStatus === 'Suspended') {
+        btnText.textContent = 'Unsuspend Account';
+        btn.className = 'bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium transition-colors prevent-multiple-clicks';
+        document.getElementById('suspension-details').classList.add('hidden');
+      } else {
+        btnText.textContent = 'Suspend Account';
+        btn.className = 'bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm font-medium transition-colors prevent-multiple-clicks';
+        hideCurrentSuspensionInfo();
+      }
+    }
+    function toggleSuspension(){ currentUserStatus === 'Suspended' ? unsuspendUser() : showSuspensionDetails(); }
+    function showSuspensionDetails(){
+      const el = document.getElementById('suspension-details');
+      el.classList.remove('hidden');
+      enableModalScroll();
+    }
+    
+    function scrollToSuspensionForm() {
+      setTimeout(() => {
+        const modalContent = document.getElementById('modal-content-area');
+        if (modalContent.classList.contains('overflow-y-auto')) {
+          modalContent.scrollTo({ top: modalContent.scrollHeight, behavior: 'smooth' });
+        }
+      }, 100);
+    }
+    
+    function enableModalScroll() {
+      const modalContent = document.getElementById('modal-content-area');
+      modalContent.classList.add('overflow-y-auto', 'modal-scroll');
+    }
+    
+    function disableModalScroll() {
+      const modalContent = document.getElementById('modal-content-area');
+      modalContent.classList.remove('overflow-y-auto', 'modal-scroll');
+    }
+    function cancelSuspension(){
+      document.getElementById('suspension-details').classList.add('hidden');
+      document.getElementById('suspension-reason').value = '';
+      document.getElementById('suspension-duration').value = '7';
+      document.getElementById('custom-duration').value = '';
+      hideCustomDuration();
+      disableModalScroll();
+    }
+    function confirmSuspension(){
+      const duration = document.getElementById('suspension-duration').value;
+      const custom   = document.getElementById('custom-duration').value;
+      const reason   = document.getElementById('suspension-reason').value.trim();
+      let days = duration === 'custom' ? parseInt(custom) : parseInt(duration);
+      if (duration === 'custom' && (!days || days<1)) return alert('Please enter a valid custom duration.');
+      if (!reason) return alert('Please provide a reason for suspension.');
+      suspendUser(days, reason);
+    }
+    async function suspendUser(days, reason){
+      if (isGlobalLoading()) return;
+      
+      setGlobalLoading(true);
+      setButtonLoading('confirmSuspensionBtn', true, 'Suspending...');
+      
+      try{
+        const r = await fetch('/accounts/api/suspend-driver/',{
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ user_id: currentUserId, duration_days: days, reason })
+        });
+        const j = await r.json();
+        if (j.success){
+          showSuccessModal('User suspended successfully!', function() {
+            currentUserStatus = 'Suspended';
+            document.getElementById('modal-status').value = 'Suspended';
+            updateSuspendButton(); cancelSuspension(); location.reload();
+          });
+        } else { 
+          showErrorModal('Suspension Failed', j.error || 'Failed to suspend user');
+        }
+      } catch(e){ 
+        console.error(e); 
+        showErrorModal('Suspension Failed', 'Failed to suspend user. Please try again.');
+      } finally {
+        setGlobalLoading(false);
+        setButtonLoading('confirmSuspensionBtn', false);
+      }
+    }
+    async function unsuspendUser(){
+      showConfirmModal('Unsuspend User', 'Are you sure you want to unsuspend this user?', async function() {
+        if (isGlobalLoading()) return;
+        
+        setGlobalLoading(true);
+        setButtonLoading('suspend-button', true, 'Processing...');
+        
+        try{
+          const r = await fetch('/accounts/api/unsuspend-driver/',{
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ user_id: currentUserId })
+          });
+          const j = await r.json();
+          if (j.success){
+            showSuccessModal('User unsuspended successfully!', function() {
+              currentUserStatus = 'Active';
+              document.getElementById('modal-status').value = 'Active';
+              updateSuspendButton(); location.reload();
+            });
+          } else { 
+            showErrorModal('Unsuspension Failed', j.error || 'Failed to unsuspend user');
+          }
+        } catch(e){ 
+          console.error(e); 
+          showErrorModal('Unsuspension Failed', 'Failed to unsuspend user. Please try again.');
+        } finally {
+          setGlobalLoading(false);
+          setButtonLoading('suspend-button', false);
+        }
+      });
+    }
+
+    // ======== Pagination + Filtering ========
+    let allRows = [];
+    let filteredRows = [];
+    let currentPage = 1;
+    const pageSize = 7;
+
+    function updatePagination() {
+      const totalPages = Math.ceil(filteredRows.length / pageSize);
+      const paginationContainer = document.getElementById('pagination-container');
+      paginationContainer.innerHTML = '';
+      
+      if (totalPages <= 1) return;
+      
+      // First page button
+      if (currentPage > 1) {
+        const firstBtn = document.createElement('button');
+        firstBtn.innerHTML = '<i class="fas fa-angle-double-left"></i>';
+        firstBtn.className = 'px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50';
+        firstBtn.onclick = () => { currentPage = 1; renderPage(); };
+        paginationContainer.appendChild(firstBtn);
+        
+        const prevBtn = document.createElement('button');
+        prevBtn.innerHTML = '<i class="fas fa-angle-left"></i>';
+        prevBtn.className = 'px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50';
+        prevBtn.onclick = () => { currentPage -= 1; renderPage(); };
+        paginationContainer.appendChild(prevBtn);
+      }
+      
+      // Page number buttons
+      const startPage = Math.max(1, currentPage - 2);
+      const endPage = Math.min(totalPages, currentPage + 2);
+      
+      for (let i = startPage; i <= endPage; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.textContent = i;
+        if (i === currentPage) {
+          pageBtn.className = 'px-3 py-2 text-sm font-medium text-white bg-[#531B24] border border-[#531B24] rounded-md';
+        } else {
+          pageBtn.className = 'px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50';
+          pageBtn.onclick = () => { currentPage = i; renderPage(); };
+        }
+        paginationContainer.appendChild(pageBtn);
+      }
+      
+      // Last page button
+      if (currentPage < totalPages) {
+        const nextBtn = document.createElement('button');
+        nextBtn.innerHTML = '<i class="fas fa-angle-right"></i>';
+        nextBtn.className = 'px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50';
+        nextBtn.onclick = () => { currentPage += 1; renderPage(); };
+        paginationContainer.appendChild(nextBtn);
+        
+        const lastBtn = document.createElement('button');
+        lastBtn.innerHTML = '<i class="fas fa-angle-double-right"></i>';
+        lastBtn.className = 'px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50';
+        lastBtn.onclick = () => { currentPage = totalPages; renderPage(); };
+        paginationContainer.appendChild(lastBtn);
+      }
+    }
+
+    function renderPage() {
+      const startIndex = (currentPage - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      
+      // Hide all rows first
+      allRows.forEach(row => row.classList.add('hidden'));
+      
+      // Show only the rows for current page
+      const pageRows = filteredRows.slice(startIndex, endIndex);
+      pageRows.forEach(row => row.classList.remove('hidden'));
+      
+      // Update pagination info
+      const from = filteredRows.length === 0 ? 0 : startIndex + 1;
+      const to = Math.min(endIndex, filteredRows.length);
+      document.getElementById('pagination-info').textContent = `Showing ${from} to ${to} of ${filteredRows.length} entries`;
+      
+      // Update pagination buttons
+      updatePagination();
+      
+      // Handle empty state
+      const noResultsRow = document.getElementById('no-results-drivers');
+      if (noResultsRow) {
+        noResultsRow.classList.toggle('hidden', filteredRows.length > 0);
+      }
+    }
+
+    function filterDriverTable() {
+      const searchValue = document.getElementById('search-input').value.toLowerCase().trim();
+      const statusFilter = document.getElementById('status-filter').value;
+
+      filteredRows = allRows.filter(row => {
+        const name   = (row.dataset.name  || '').toLowerCase();
+        const email  = (row.dataset.email || '').toLowerCase();
+        const phone  = (row.dataset.phone || '').toLowerCase();
+        const status = (row.dataset.status || '').trim();
+
+        const matchesSearch = !searchValue || name.includes(searchValue) || email.includes(searchValue) || phone.includes(searchValue);
+        const matchesStatus = !statusFilter || status === statusFilter;
+
+        return matchesSearch && matchesStatus;
+      });
+
+      // Reset to first page when filtering
+      currentPage = 1;
+      renderPage();
+
+      // Toggle clear button
+      document.getElementById('clear-search').classList.toggle('hidden', searchValue.length === 0);
+    }
+
+    const debouncedFilter = debounce(filterDriverTable, 200);
+    document.getElementById('search-input').addEventListener('input', debouncedFilter);
+    document.getElementById('status-filter').addEventListener('change', filterDriverTable);
+
+    document.getElementById('clear-search').addEventListener('click', () => {
+      const input = document.getElementById('search-input');
+      input.value = '';
+      input.focus();
+      filterDriverTable();
+    });
+
+    document.getElementById('reset-filters')?.addEventListener('click', () => {
+      document.getElementById('search-input').value = '';
+      document.getElementById('status-filter').value = '';
+      filterDriverTable();
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Initialize pagination arrays
+      allRows = Array.from(document.querySelectorAll('.driver-row'));
+      filteredRows = [...allRows];
+      renderPage();
+    });
+
+    // ======== Assigned Tartanillas Modal ========
+    const TARTANILLAS_API_URL = '/accounts/api/driver-assigned-tartanillas/';
+
+    function openTartanillasModal(btn) {
+      const driverId = btn.getAttribute('data-id');
+      const driverName = btn.getAttribute('data-drivername') || '';
+      document.getElementById('tartanillas-driver-label').textContent = driverName ? `Driver: ${driverName}` : '';
+
+      clearTartanillasRows();
+      showTartanillasLoading();
+
+      document.getElementById('TartanillasModal').classList.remove('hidden');
+      lockBodyScroll();
+
+      const url = `${TARTANILLAS_API_URL}?driver_id=${encodeURIComponent(driverId)}`;
+      fetch(url, { headers: { 'Accept': 'application/json' }})
+        .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+        .then(data => { hideTartanillasLoading(); renderTartanillas(data); })
+        .catch(err => { console.error('Load tartanillas error:', err); hideTartanillasLoading(); showTartanillasError(); });
+    }
+    function closeTartanillasModal() {
+      document.getElementById('TartanillasModal').classList.add('hidden');
+      unlockBodyScroll();
+      clearTartanillasRows();
+      hideTartanillasLoading();
+      hideTartanillasError();
+      hideTartanillasEmpty();
+    }
+    function clearTartanillasRows() {
+      const body = document.getElementById('tartanillas-body');
+      [...body.querySelectorAll('tr.dynamic-row')].forEach(tr => tr.remove());
+    }
+    function renderTartanillas(payload) {
+      const body = document.getElementById('tartanillas-body');
+      const items = Array.isArray(payload) ? payload : (payload?.items || []);
+      if (!items.length) { showTartanillasEmpty(); return; }
+      items.forEach(item => {
+        const id = item.id ?? item.tartanilla_id ?? '';
+        const name = item.name ?? item.tartanilla_name ?? '';
+        const code = item.code ?? item.plate_number ?? item.registration_no ?? '';
+        const owner = item.owner ?? item.owner_name ?? '';
+        const status = item.status ?? '';
+        const details = item.details ?? item.notes ?? item.remark ?? '';
+        const tr = document.createElement('tr');
+        tr.className = 'dynamic-row';
+        tr.innerHTML = `
+          <td class="px-3 py-2">${escapeHtml(id)}</td>
+          <td class="px-3 py-2">${escapeHtml(name)}</td>
+          <td class="px-3 py-2">${escapeHtml(code)}</td>
+          <td class="px-3 py-2">${escapeHtml(owner)}</td>
+          <td class="px-3 py-2 ${status === 'Active' ? 'text-green-600' : status === 'Inactive' ? 'text-yellow-600' : status === 'Suspended' ? 'text-red-600' : 'text-gray-700'}">
+            ${escapeHtml(status)}
+          </td>
+          <td class="px-3 py-2">${escapeHtml(details)}</td>
+        `;
+        body.appendChild(tr);
+      });
+    }
+    function escapeHtml(v){ return String(v ?? '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); }
+    function showTartanillasLoading(){ document.getElementById('tartanillas-loading').classList.remove('hidden'); }
+    function hideTartanillasLoading(){ document.getElementById('tartanillas-loading').classList.add('hidden'); }
+    function showTartanillasError(){ document.getElementById('tartanillas-error').classList.remove('hidden'); }
+    function hideTartanillasError(){ document.getElementById('tartanillas-error').classList.add('hidden'); }
+    function showTartanillasEmpty(){ document.getElementById('tartanillas-empty').classList.remove('hidden'); }
+    function hideTartanillasEmpty(){ document.getElementById('tartanillas-empty').classList.add('hidden'); }
+
+    // Close modals on ESC
+    document.addEventListener('keydown', (e) => {
+      const tOpen = !document.getElementById('TartanillasModal').classList.contains('hidden');
+      const dOpen = !document.getElementById('DetailsModal').classList.contains('hidden');
+      if (e.key === 'Escape') {
+        if (tOpen) closeTartanillasModal();
+        else if (dOpen) closeModal();
+      }
+    });
+  </script>
+</body>
+</html>

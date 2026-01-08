@@ -1,0 +1,381 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Audit Logs</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css">
+</head>
+<body class="h-screen overflow-hidden p-0 md:p-6 ml-5">
+  {% include 'base.html' %}
+
+  <!-- Fill the viewport height and allow inner children to shrink -->
+  <div class="flex flex-col md:ml-64 p-4 md:p-6 h-full min-h-0">
+
+    <!-- Make the card the layout container; its middle section will scroll -->
+    <div class="bg-white rounded-none md:rounded-2xl shadow p-4 md:p-6 border border-[#531B24] w-full overflow-hidden flex flex-col h-full min-h-0">
+
+      <!-- Header (fixed inside the card) -->
+      <div class="mb-6">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <h1 class="text-2xl font-bold text-[#561c24]">Audit Logs</h1>
+            <p class="text-sm text-[#6d2932]/70 mt-1">System activity tracking</p>
+          </div>
+          
+
+          <div class="flex flex-col sm:flex-row gap-2">
+            <div class="relative">
+              <input type="text" id="searchInput" placeholder="Search" 
+                class="pl-10 pr-4 py-2 w-full h-8 rounded-xl border border-[#531B24] focus:outline-none focus:ring-1 focus:ring-[#531B24]">
+              <i class="fas fa-search absolute left-3 top-2.5 text-[#531B24]"></i>
+            </div>
+            <select id="sortSelect" class="pl-3 pr-8 h-8 rounded-xl border border-[#531B24] text-gray-700 focus:outline-none focus:ring-1 focus:ring-[#6A2931]">
+              <option value="newest" selected>Newest First</option>
+              <option value="oldest">Oldest First</option>
+            </select>
+            <select id="limitSelect" class="pl-3 pr-8 h-8 rounded-xl border border-[#531B24] text-gray-700 focus:outline-none focus:ring-1 focus:ring-[#531B24]">
+              <option selected>10</option>
+              <option>20</option>
+              <option>50</option>
+              <option>100</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABLE SECTION with horizontal scroll -->
+      <div class="bg-[#f8f6f4] rounded-lg overflow-x-auto flex-1 min-h-0">
+        <table class="min-w-full" style="min-width: 1200px;">
+          <thead class="bg-white border-b border-[#561c24]/10">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-[#561c24] uppercase tracking-wide">ID</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-[#561c24] uppercase tracking-wide">Time</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-[#561c24] uppercase tracking-wide">User</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-[#561c24] uppercase tracking-wide">Role</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-[#561c24] uppercase tracking-wide">Action</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-[#561c24] uppercase tracking-wide">Target</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-[#561c24] uppercase tracking-wide">IP Address</th>
+
+            </tr>
+          </thead>
+          <tbody id="logsBody" class="bg-white divide-y divide-[#561c24]/10">
+          </tbody>
+        </table>
+
+        <div id="loadingState" class="bg-white py-12 text-center hidden">
+          <div class="flex flex-col items-center">
+            <div class="animate-pulse mb-4">
+              <img src="{% static 'img/TarTrack Logo_sakto.png' %}" alt="TarTrack" class="h-16 w-auto opacity-70">
+            </div>
+          </div>
+        </div>
+        <div id="emptyState" class="bg-white py-12 text-center hidden">
+          <i class="fas fa-clipboard-list text-3xl text-gray-300 mb-3"></i>
+          <p class="text-gray-500">No logs found</p>
+        </div>
+        <div id="errorState" class="bg-white py-12 text-center text-red-600 hidden">
+          <i class="fas fa-exclamation-triangle text-3xl text-red-300 mb-3"></i>
+          <p>Failed to load logs</p>
+        </div>
+      </div>
+
+      <!-- Footer / Pagination (fixed inside the card, below the scroll area) -->
+      <div class="flex items-center justify-between mt-6">
+        <div class="text-sm text-gray-700">
+          <span id="rangeText">Showing —</span>
+        </div>
+        <div class="flex items-center space-x-2" id="paginationContainer">
+          <!-- Pagination buttons will be inserted here -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    console.log('Script starting...');
+    
+    // =============== CONFIG: get the real API endpoint from Django ===============
+    const API_URL = "{{ audit_api|default:'/api/auditlogs/' }}";
+    console.log('API_URL:', API_URL);
+
+    // Initial state
+    let page  = parseInt('{{ current_page|default:"1" }}', 10) || 1;
+    let limit = parseInt('{{ limit|default:"20" }}', 10) || 20;
+    let sort  = '{{ sort|default:"newest" }}' || 'newest';
+
+    // UI elements
+    const logsBody = document.getElementById('logsBody');
+    const loadingState = document.getElementById('loadingState');
+    const emptyState = document.getElementById('emptyState');
+    const errorState = document.getElementById('errorState');
+    const rangeText = document.getElementById('rangeText');
+    const limitSelect = document.getElementById('limitSelect');
+    const sortSelect = document.getElementById('sortSelect');
+    const searchInput = document.getElementById('searchInput');
+
+    let lastTotal = 0;
+
+    function actionClass(action) {
+      if (!action) return 'text-gray-600';
+      const a = String(action).toLowerCase();
+      if (a.includes('delete') || a.includes('reject') || a.includes('suspend')) return 'px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded-full';
+      if (a.includes('create') || a.includes('book') || a.includes('approve') || a.includes('release')) return 'px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full';
+      if (a.includes('update')) return 'px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full';
+      return 'px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full';
+    }
+
+    function fmtTS(v){
+      if (!v) return '';
+      const d = new Date(v);
+      if (isNaN(d)) return v;
+      return d.toLocaleString('en-PH', { hour12: true });
+    }
+
+    function setLoading(on) {
+      loadingState?.classList.toggle('hidden', !on);
+      errorState?.classList.add('hidden');
+      emptyState?.classList.add('hidden');
+      if (on) logsBody.innerHTML = '';
+    }
+
+    function setError(msg) {
+      errorState.textContent = msg || "Failed to load logs. Please try again.";
+      errorState.classList.remove('hidden');
+      loadingState.classList.add('hidden');
+      emptyState.classList.add('hidden');
+    }
+
+    function renderRows(logs) {
+      logsBody.innerHTML = '';
+      for (const r of logs) {
+        const id = r.id ?? r.audit_id ?? r.pk ?? '';
+        const ts = r.timestamp ?? r.created_at ?? r.createdAt ?? '';
+        const user = r.username ?? r.user_email ?? r.user ?? '—';
+        const role = r.role ?? r.user_type ?? '—';
+        const action = r.action ?? r.event ?? '—';
+        const target = r.target ?? ((r.entity_name || '') + (r.entity_id ? ` #${r.entity_id}` : ''));
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50 transition-colors';
+        tr.innerHTML = `
+          <td class="px-4 py-3 text-sm font-mono text-gray-500">#${id}</td>
+          <td class="px-4 py-3 text-sm text-gray-900">${fmtTS(ts)}</td>
+          <td class="px-4 py-3">
+            <div class="text-sm font-medium text-gray-900">${user}</div>
+            ${r.user_id ? `<div class="text-xs text-gray-500">ID: ${r.user_id}</div>` : ''}
+          </td>
+          <td class="px-4 py-3">
+            <span class="px-2 py-1 text-xs font-medium bg-[#561c24]/10 text-[#561c24] rounded-full">${role}</span>
+          </td>
+          <td class="px-4 py-3">
+            <span class="${actionClass(action)}">${action}</span>
+          </td>
+          <td class="px-4 py-3 text-sm text-gray-600">${target || '—'}</td>
+          <td class="px-4 py-3 text-sm text-gray-600">${r.ip_address ?? '—'}</td>
+
+        `;
+        logsBody.appendChild(tr);
+      }
+    }
+
+    function renderPagination(total) {
+      lastTotal = total || 0;
+      const from = lastTotal === 0 ? 0 : (page - 1) * limit + 1;
+      const to = Math.min(page * limit, lastTotal);
+      rangeText.textContent = `Showing ${from} to ${to} of ${lastTotal} entries`;
+      
+      const totalPages = Math.ceil(lastTotal / limit);
+      const paginationContainer = document.getElementById('paginationContainer');
+      paginationContainer.innerHTML = '';
+      
+      if (totalPages <= 1) return;
+      
+      // First page button
+      if (page > 1) {
+        const firstBtn = document.createElement('button');
+        firstBtn.innerHTML = '<i class="fas fa-angle-double-left"></i>';
+        firstBtn.className = 'px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50';
+        firstBtn.onclick = () => { page = 1; fetchLogs(); };
+        paginationContainer.appendChild(firstBtn);
+        
+        const prevBtn = document.createElement('button');
+        prevBtn.innerHTML = '<i class="fas fa-angle-left"></i>';
+        prevBtn.className = 'px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50';
+        prevBtn.onclick = () => { page -= 1; fetchLogs(); };
+        paginationContainer.appendChild(prevBtn);
+      }
+      
+      // Page number buttons
+      const startPage = Math.max(1, page - 2);
+      const endPage = Math.min(totalPages, page + 2);
+      
+      for (let i = startPage; i <= endPage; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.textContent = i;
+        if (i === page) {
+          pageBtn.className = 'px-3 py-2 text-sm font-medium text-white bg-[#531B24] border border-[#531B24] rounded-md';
+        } else {
+          pageBtn.className = 'px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50';
+          pageBtn.onclick = () => { page = i; fetchLogs(); };
+        }
+        paginationContainer.appendChild(pageBtn);
+      }
+      
+      // Last page button
+      if (page < totalPages) {
+        const nextBtn = document.createElement('button');
+        nextBtn.innerHTML = '<i class="fas fa-angle-right"></i>';
+        nextBtn.className = 'px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50';
+        nextBtn.onclick = () => { page += 1; fetchLogs(); };
+        paginationContainer.appendChild(nextBtn);
+        
+        const lastBtn = document.createElement('button');
+        lastBtn.innerHTML = '<i class="fas fa-angle-double-right"></i>';
+        lastBtn.className = 'px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50';
+        lastBtn.onclick = () => { page = totalPages; fetchLogs(); };
+        paginationContainer.appendChild(lastBtn);
+      }
+    }
+
+    function buildQuery(params) {
+      const esc = encodeURIComponent;
+      return Object.keys(params)
+        .filter(k => params[k] !== undefined && params[k] !== null && params[k] !== '')
+        .map(k => `${esc(k)}=${esc(params[k])}`)
+        .join('&');
+    }
+
+    function normalizePayload(payload) {
+      let items = [];
+      let total = 0;
+
+      if (Array.isArray(payload?.data)) {
+        items = payload.data;
+        total = payload?.pagination?.total ?? payload?.total ?? items.length;
+      } else if (Array.isArray(payload?.logs)) {
+        items = payload.logs;
+        total = payload?.pagination?.total ?? payload?.total ?? items.length;
+      } else if (Array.isArray(payload?.results)) {
+        items = payload.results;
+        total = payload?.count ?? items.length;
+      }
+
+      if (!items.length && Array.isArray(payload)) {
+        items = payload;
+        total = items.length;
+      }
+
+      return { items, total };
+    }
+    
+    async function fetchLogs() {
+      setLoading(true);
+      try {
+        const q = buildQuery({
+          page, limit, sort,
+          q: searchInput.value.trim(),
+          _t: Date.now(), // cache-buster
+        });
+
+        const url = `${API_URL}?${q}`;
+        console.log("AUDITLOGS TEMPLATE v3.2 — API:", "{{ audit_api }}");
+        console.log("Full URL:", url);
+
+        const res = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Accept": "application/json",
+            "X-Requested-With": "XMLHttpRequest"
+          },
+          credentials: "same-origin",
+          cache: "no-store",
+          redirect: "follow",
+        });
+
+        const ctype = res.headers.get('content-type') || '';
+        const raw = await res.text();
+
+        if (!ctype.includes('application/json')) {
+          console.error('[AuditLogs] Non-JSON response:', raw.slice(0, 500));
+          setError(`Non-JSON response (${res.status}). Check endpoint or auth redirect.\nEndpoint used: ${API_URL}`);
+          return;
+        }
+
+        let payload;
+        try { payload = JSON.parse(raw); }
+        catch (e) {
+          console.error('[AuditLogs] JSON parse error:', e, raw.slice(0, 500));
+          setError('Failed to parse server response.');
+          return;
+        }
+        
+        console.log('API Response:', payload);
+
+        if (typeof payload.success === 'boolean' && !payload.success) {
+          setError(payload.error || `Request failed (${res.status})`);
+          return;
+        }
+
+        const { items, total } = normalizePayload(payload);
+
+        if (!Array.isArray(items)) {
+          setError('Unexpected payload shape. Expected an array of rows.');
+          return;
+        }
+
+        if (items.length === 0) {
+          logsBody.innerHTML = '';
+          loadingState.classList.add('hidden');
+          emptyState.classList.remove('hidden');
+          renderPagination(total);
+          return;
+        }
+
+        renderRows(items);
+        renderPagination(total);
+        loadingState.classList.add('hidden');
+        emptyState.classList.add('hidden');
+      } catch (err) {
+        console.error('[AuditLogs] fetch error:', err);
+        setError(err?.message || String(err));
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // Debounce helper
+    function debounce(fn, ms=400) {
+      let t;
+      return (...args) => { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), ms); };
+    }
+
+    // Events (remove old button listeners since we now create buttons dynamically)
+    limitSelect.addEventListener('change', () => { limit = parseInt(limitSelect.value, 10) || 20; page = 1; fetchLogs(); });
+    sortSelect.addEventListener('change', () => { sort = sortSelect.value; page = 1; fetchLogs(); });
+    searchInput.addEventListener('input', debounce(() => { page = 1; fetchLogs(); }, 500));
+
+    // Load bootstrap data
+    let bootstrapData = null;
+    try {
+      bootstrapData = JSON.parse('{{ bootstrap_json|escapejs }}');
+    } catch (e) {
+      console.error('Failed to parse bootstrap data:', e);
+    }
+    
+    if (bootstrapData && bootstrapData.data && bootstrapData.data.length > 0) {
+      renderRows(bootstrapData.data);
+      renderPagination(bootstrapData.pagination.total);
+      loadingState.classList.add('hidden');
+      emptyState.classList.add('hidden');
+    } else {
+      emptyState.classList.remove('hidden');
+      loadingState.classList.add('hidden');
+    }
+  </script>
+
+</body>
+</html>

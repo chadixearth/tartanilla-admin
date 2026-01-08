@@ -1,0 +1,423 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Create Tour Package - Step by Step{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<style>
+    .step-container { display: none; }
+    .step-container.active { display: block; }
+    .step-indicator { display: flex; justify-content: space-between; margin-bottom: 2rem; }
+    .step-item { flex: 1; text-align: center; position: relative; }
+    .step-item::after { content: ''; position: absolute; top: 20px; left: 50%; width: 100%; height: 2px; background: #e5e7eb; z-index: -1; }
+    .step-item:last-child::after { display: none; }
+    .step-circle { width: 40px; height: 40px; border-radius: 50%; background: #e5e7eb; color: #6b7280; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; margin-bottom: 0.5rem; }
+    .step-item.completed .step-circle { background: #531B24; color: white; }
+    .step-item.active .step-circle { background: #531B24; color: white; border: 3px solid #fbbf24; }
+    .itinerary-list { max-height: 400px; overflow-y: auto; }
+    .itinerary-item { border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin-bottom: 0.5rem; background: #f9fafb; }
+    .itinerary-item.pickup { border-left: 4px solid #10b981; }
+    .itinerary-item.stop { border-left: 4px solid #3b82f6; }
+    .itinerary-item.dropoff { border-left: 4px solid #ef4444; }
+    #map { height: 400px; width: 100%; border-radius: 8px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="p-4 md:p-6">
+    <div class="bg-white p-6 rounded-lg shadow-lg">
+        <h2 class="text-2xl font-semibold mb-6 text-primary-dark">Create Tour Package - Step by Step</h2>
+
+        <!-- Step Indicator -->
+        <div class="step-indicator">
+            <div class="step-item active" data-step="1">
+                <div class="step-circle">1</div>
+                <div class="text-sm font-medium">Basic Info</div>
+            </div>
+            <div class="step-item" data-step="2">
+                <div class="step-circle">2</div>
+                <div class="text-sm font-medium">Pickup Point</div>
+            </div>
+            <div class="step-item" data-step="3">
+                <div class="step-circle">3</div>
+                <div class="text-sm font-medium">Tour Stops</div>
+            </div>
+            <div class="step-item" data-step="4">
+                <div class="step-circle">4</div>
+                <div class="text-sm font-medium">Review</div>
+            </div>
+        </div>
+
+        <form id="tourPackageForm">
+            {% csrf_token %}
+            
+            <!-- Step 1: Basic Info -->
+            <div class="step-container active" data-step="1">
+                <h3 class="text-lg font-semibold mb-4">Basic Package Information</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Package Name</label>
+                        <input type="text" name="package_name" required class="w-full border rounded-md p-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Description</label>
+                        <textarea name="description" rows="4" required class="w-full border rounded-md p-2"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Price (₱)</label>
+                            <input type="number" name="price" required class="w-full border rounded-md p-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Max Pax</label>
+                            <input type="number" name="max_pax" class="w-full border rounded-md p-2">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Available Days</label>
+                            <div class="grid grid-cols-7 gap-1">
+                                <label class="text-xs"><input type="checkbox" name="days" value="monday"> Mon</label>
+                                <label class="text-xs"><input type="checkbox" name="days" value="tuesday"> Tue</label>
+                                <label class="text-xs"><input type="checkbox" name="days" value="wednesday"> Wed</label>
+                                <label class="text-xs"><input type="checkbox" name="days" value="thursday"> Thu</label>
+                                <label class="text-xs"><input type="checkbox" name="days" value="friday"> Fri</label>
+                                <label class="text-xs"><input type="checkbox" name="days" value="saturday"> Sat</label>
+                                <label class="text-xs"><input type="checkbox" name="days" value="sunday"> Sun</label>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Expiration Date</label>
+                            <input type="date" name="expiration_date" class="w-full border rounded-md p-2">
+                            <label class="text-xs"><input type="checkbox" name="no_expiry"> No expiry</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Pickup Point -->
+            <div class="step-container" data-step="2">
+                <h3 class="text-lg font-semibold mb-4">Select Pickup Point</h3>
+                <div id="map"></div>
+                <div class="mt-4">
+                    <label class="block text-sm font-medium mb-2">Available Pickup Points</label>
+                    <div id="pickupList" class="space-y-2"></div>
+                </div>
+                <input type="hidden" name="pickup_location">
+                <input type="hidden" name="pickup_lat">
+                <input type="hidden" name="pickup_lng">
+            </div>
+
+            <!-- Step 3: Tour Stops -->
+            <div class="step-container" data-step="3">
+                <h3 class="text-lg font-semibold mb-4">Add Tour Stops</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <div id="map2"></div>
+                        <div class="mt-4">
+                            <label class="block text-sm font-medium mb-2">Available Stops</label>
+                            <div id="stopsList" class="space-y-2 max-h-60 overflow-y-auto"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold mb-2">Selected Stops (Drag to reorder)</h4>
+                        <div id="selectedStops" class="itinerary-list"></div>
+                        <button type="button" onclick="addDropoff()" class="mt-4 px-4 py-2 bg-red-600 text-white rounded-md">Add Drop-off Point</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: Review -->
+            <div class="step-container" data-step="4">
+                <h3 class="text-lg font-semibold mb-4">Review Tour Package</h3>
+                <div id="reviewContent"></div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="flex justify-between mt-6">
+                <button type="button" onclick="prevStep()" id="prevBtn" class="px-6 py-2 border rounded-full" style="display:none;">Previous</button>
+                <button type="button" onclick="nextStep()" id="nextBtn" class="px-6 py-2 bg-[#531B24] text-white rounded-full">Next</button>
+                <button type="submit" id="submitBtn" class="px-6 py-2 bg-[#531B24] text-white rounded-full" style="display:none;">Create Package</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+let currentStep = 1;
+let map, map2;
+let pickupPoints = [];
+let stops = [];
+let itinerary = [];
+let selectedPickup = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    initMaps();
+    loadPickupPoints();
+});
+
+function initMaps() {
+    map = L.map('map').setView([10.3157, 123.8854], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    
+    map2 = L.map('map2').setView([10.3157, 123.8854], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map2);
+}
+
+function loadPickupPoints() {
+    fetch('/api/tourpackage/get_pickup_points/')
+        .then(r => r.json())
+        .then(data => {
+            pickupPoints = data.data || [];
+            renderPickupList();
+            pickupPoints.forEach(p => {
+                L.marker([p.latitude, p.longitude]).addTo(map)
+                    .bindPopup(p.name)
+                    .on('click', () => selectPickup(p));
+            });
+        });
+}
+
+function renderPickupList() {
+    const list = document.getElementById('pickupList');
+    list.innerHTML = pickupPoints.map(p => 
+        `<div class="p-2 border rounded cursor-pointer hover:bg-gray-50" onclick='selectPickup(${JSON.stringify(p)})'>${p.name}</div>`
+    ).join('');
+}
+
+function selectPickup(point) {
+    selectedPickup = point;
+    document.querySelector('[name="pickup_location"]').value = point.name;
+    document.querySelector('[name="pickup_lat"]').value = point.latitude;
+    document.querySelector('[name="pickup_lng"]').value = point.longitude;
+    
+    itinerary = [{
+        step_order: 1,
+        location_name: point.name,
+        location_type: 'pickup',
+        latitude: point.latitude,
+        longitude: point.longitude,
+        duration_hours: 0,
+        duration_minutes: 0,
+        description: 'Tour starts here'
+    }];
+    
+    map.setView([point.latitude, point.longitude], 15);
+    loadStops();
+}
+
+function loadStops() {
+    fetch('/api/tourpackage/get_stops/')
+        .then(r => r.json())
+        .then(data => {
+            stops = data.data || [];
+            renderStopsList();
+            stops.forEach(s => {
+                L.marker([s.latitude, s.longitude]).addTo(map2)
+                    .bindPopup(s.name)
+                    .on('click', () => addStop(s));
+            });
+        });
+}
+
+function renderStopsList() {
+    const list = document.getElementById('stopsList');
+    list.innerHTML = stops.map(s => 
+        `<div class="p-2 border rounded cursor-pointer hover:bg-gray-50" onclick='addStop(${JSON.stringify(s).replace(/'/g, "&apos;")})'>${s.name}</div>`
+    ).join('');
+}
+
+function addStop(stop) {
+    const hours = prompt('How many hours at this stop?', '1') || '0';
+    const minutes = prompt('How many minutes?', '0') || '0';
+    const description = prompt('Description/Activities:', '') || '';
+    
+    itinerary.push({
+        step_order: itinerary.length + 1,
+        location_name: stop.name,
+        location_type: 'stop',
+        latitude: stop.latitude,
+        longitude: stop.longitude,
+        duration_hours: parseInt(hours),
+        duration_minutes: parseInt(minutes),
+        description: description
+    });
+    
+    renderSelectedStops();
+}
+
+function addDropoff() {
+    const dropoffName = prompt('Drop-off location name:', selectedPickup?.name || 'Plaza Independencia');
+    if (!dropoffName) return;
+    
+    const dropoffPoint = pickupPoints.find(p => p.name === dropoffName) || selectedPickup;
+    
+    itinerary.push({
+        step_order: itinerary.length + 1,
+        location_name: dropoffName,
+        location_type: 'dropoff',
+        latitude: dropoffPoint.latitude,
+        longitude: dropoffPoint.longitude,
+        duration_hours: 0,
+        duration_minutes: 0,
+        description: 'Tour ends here'
+    });
+    
+    renderSelectedStops();
+}
+
+function renderSelectedStops() {
+    const container = document.getElementById('selectedStops');
+    container.innerHTML = itinerary.map((item, idx) => `
+        <div class="itinerary-item ${item.location_type}" data-index="${idx}">
+            <div class="flex justify-between items-start">
+                <div>
+                    <div class="font-semibold">${idx + 1}. ${item.location_name}</div>
+                    <div class="text-sm text-gray-600">${item.location_type.toUpperCase()}</div>
+                    ${item.duration_hours || item.duration_minutes ? `<div class="text-sm">⏱ ${item.duration_hours}h ${item.duration_minutes}m</div>` : ''}
+                    ${item.description ? `<div class="text-sm mt-1">${item.description}</div>` : ''}
+                </div>
+                ${item.location_type === 'stop' ? `<button type="button" onclick="removeStop(${idx})" class="text-red-600">✕</button>` : ''}
+            </div>
+        </div>
+    `).join('');
+    
+    new Sortable(container, {
+        animation: 150,
+        onEnd: function(evt) {
+            const item = itinerary.splice(evt.oldIndex, 1)[0];
+            itinerary.splice(evt.newIndex, 0, item);
+            itinerary.forEach((it, i) => it.step_order = i + 1);
+            renderSelectedStops();
+        }
+    });
+}
+
+function removeStop(idx) {
+    itinerary.splice(idx, 1);
+    itinerary.forEach((it, i) => it.step_order = i + 1);
+    renderSelectedStops();
+}
+
+function nextStep() {
+    if (currentStep === 1 && !document.querySelector('[name="package_name"]').value) {
+        alert('Please fill in required fields');
+        return;
+    }
+    if (currentStep === 2 && !selectedPickup) {
+        alert('Please select a pickup point');
+        return;
+    }
+    if (currentStep === 3 && itinerary.length < 2) {
+        alert('Please add at least one stop or drop-off point');
+        return;
+    }
+    
+    if (currentStep < 4) {
+        currentStep++;
+        updateStepDisplay();
+        if (currentStep === 4) showReview();
+    }
+}
+
+function prevStep() {
+    if (currentStep > 1) {
+        currentStep--;
+        updateStepDisplay();
+    }
+}
+
+function updateStepDisplay() {
+    document.querySelectorAll('.step-container').forEach(el => el.classList.remove('active'));
+    document.querySelector(`.step-container[data-step="${currentStep}"]`).classList.add('active');
+    
+    document.querySelectorAll('.step-item').forEach((el, idx) => {
+        el.classList.remove('active', 'completed');
+        if (idx + 1 < currentStep) el.classList.add('completed');
+        if (idx + 1 === currentStep) el.classList.add('active');
+    });
+    
+    document.getElementById('prevBtn').style.display = currentStep > 1 ? 'block' : 'none';
+    document.getElementById('nextBtn').style.display = currentStep < 4 ? 'block' : 'none';
+    document.getElementById('submitBtn').style.display = currentStep === 4 ? 'block' : 'none';
+    
+    if (currentStep === 2 && map) setTimeout(() => map.invalidateSize(), 100);
+    if (currentStep === 3 && map2) setTimeout(() => map2.invalidateSize(), 100);
+}
+
+function showReview() {
+    const form = document.getElementById('tourPackageForm');
+    const formData = new FormData(form);
+    const days = Array.from(form.querySelectorAll('[name="days"]:checked')).map(cb => cb.value);
+    
+    const totalDuration = itinerary.reduce((sum, item) => 
+        sum + (item.duration_hours * 60) + item.duration_minutes, 0);
+    
+    document.getElementById('reviewContent').innerHTML = `
+        <div class="space-y-4">
+            <div><strong>Package Name:</strong> ${formData.get('package_name')}</div>
+            <div><strong>Price:</strong> ₱${formData.get('price')}</div>
+            <div><strong>Max Pax:</strong> ${formData.get('max_pax') || 'N/A'}</div>
+            <div><strong>Available Days:</strong> ${days.join(', ') || 'All days'}</div>
+            <div><strong>Total Duration:</strong> ${Math.floor(totalDuration/60)}h ${totalDuration%60}m</div>
+            <div><strong>Itinerary:</strong></div>
+            <div class="itinerary-list">${itinerary.map((item, idx) => `
+                <div class="itinerary-item ${item.location_type}">
+                    <div class="font-semibold">${idx + 1}. ${item.location_name}</div>
+                    <div class="text-sm">${item.location_type.toUpperCase()} - ${item.duration_hours}h ${item.duration_minutes}m</div>
+                    ${item.description ? `<div class="text-sm text-gray-600">${item.description}</div>` : ''}
+                </div>
+            `).join('')}</div>
+        </div>
+    `;
+}
+
+document.getElementById('tourPackageForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const days = Array.from(e.target.querySelectorAll('[name="days"]:checked')).map(cb => cb.value);
+    
+    const data = {
+        package_name: formData.get('package_name'),
+        description: formData.get('description'),
+        price: parseFloat(formData.get('price')),
+        max_pax: parseInt(formData.get('max_pax')) || null,
+        pickup_location: formData.get('pickup_location'),
+        pickup_lat: parseFloat(formData.get('pickup_lat')),
+        pickup_lng: parseFloat(formData.get('pickup_lng')),
+        destination: itinerary[itinerary.length - 1]?.location_name || '',
+        dropoff_lat: itinerary[itinerary.length - 1]?.latitude || null,
+        dropoff_lng: itinerary[itinerary.length - 1]?.longitude || null,
+        available_days_data: days,
+        expiration_date_data: formData.get('no_expiry') ? null : formData.get('expiration_date'),
+        duration_hours: Math.floor(itinerary.reduce((s, i) => s + i.duration_hours * 60 + i.duration_minutes, 0) / 60),
+        duration_minutes: itinerary.reduce((s, i) => s + i.duration_hours * 60 + i.duration_minutes, 0) % 60,
+        itinerary: itinerary
+    };
+    
+    try {
+        const response = await fetch('/api/tourpackage/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            alert('Tour package created successfully!');
+            window.location.href = '{% url "tourpackage:view" %}';
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('Error creating package: ' + error.message);
+    }
+});
+</script>
+{% endblock %}

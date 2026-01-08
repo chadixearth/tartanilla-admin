@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Booking Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">Booking Details</h2>
+            
+            {% if error %}
+            <div class="alert alert-danger">{{ error }}</div>
+            {% else %}
+            
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Booking Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Booking ID:</strong> {{ booking.id }}</p>
+                            <p><strong>Status:</strong> <span class="badge badge-info">{{ booking.status|default:"N/A" }}</span></p>
+                            <p><strong>Payment Status:</strong> <span class="badge badge-warning">{{ booking.payment_status|default:"Pending" }}</span></p>
+                            <p><strong>Booking Date:</strong> {{ booking.booking_date|default:"N/A" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Number of Passengers:</strong> {{ booking.number_of_pax|default:"N/A" }}</p>
+                            <p><strong>Total Amount:</strong> ₱{{ booking.total_amount|default:"0.00" }}</p>
+                            <p><strong>Created At:</strong> {{ booking.created_at|default:"N/A" }}</p>
+                            <p><strong>Updated At:</strong> {{ booking.updated_at|default:"N/A" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if package %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Tour Package Details</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Package Name:</strong> {{ package.package_name }}</p>
+                    <p><strong>Description:</strong> {{ package.description|default:"N/A" }}</p>
+                    <p><strong>Duration:</strong> {{ package.duration_hours|default:"0" }}h {{ package.duration_minutes|default:"0" }}m</p>
+                    <p><strong>Price:</strong> ₱{{ package.price|default:"0.00" }}</p>
+                    <p><strong>Pickup Location:</strong> {{ package.pickup_location|default:"N/A" }}</p>
+                    <p><strong>Destination:</strong> {{ package.destination|default:"N/A" }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if tourist %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Tourist Information</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Name:</strong> {{ tourist.first_name }} {{ tourist.last_name }}</p>
+                    <p><strong>Email:</strong> {{ tourist.email|default:"N/A" }}</p>
+                    <p><strong>Phone:</strong> {{ tourist.phone_number|default:"N/A" }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if driver %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Driver Information</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Name:</strong> {{ driver.first_name }} {{ driver.last_name }}</p>
+                    <p><strong>Email:</strong> {{ driver.email|default:"N/A" }}</p>
+                    <p><strong>Phone:</strong> {{ driver.phone_number|default:"N/A" }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <a href="{% url 'tourpackage:view_bookings' %}" class="btn btn-secondary">Back to Bookings</a>
+            
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

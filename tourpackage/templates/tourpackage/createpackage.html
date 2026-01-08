@@ -1,0 +1,568 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Create Tour Package{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+    .step-wizard { display: flex; justify-content: space-between; margin-bottom: 3rem; position: relative; }
+    .step-wizard::before { content: ''; position: absolute; top: 24px; left: 10%; right: 10%; height: 3px; background: #e5e7eb; z-index: 0; }
+    .step { flex: 1; text-align: center; position: relative; z-index: 1; }
+    .step-circle { width: 48px; height: 48px; border-radius: 50%; background: white; border: 3px solid #e5e7eb; color: #9ca3af; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; margin: 0 auto 0.75rem; transition: all 0.3s; }
+    .step.active .step-circle { background: #531B24; border-color: #531B24; color: white; box-shadow: 0 4px 12px rgba(83, 27, 36, 0.3); }
+    .step.completed .step-circle { background: #10b981; border-color: #10b981; color: white; }
+    .step-label { font-size: 0.875rem; font-weight: 500; color: #6b7280; }
+    .step.active .step-label { color: #531B24; font-weight: 600; }
+    .step-content { display: none; animation: fadeIn 0.3s; }
+    .step-content.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .map-container { height: 450px; border-radius: 12px; overflow: hidden; border: 2px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .point-card { border: 2px solid #e5e7eb; border-radius: 10px; padding: 1rem; margin-bottom: 0.75rem; cursor: pointer; transition: all 0.2s; background: white; }
+    .point-card:hover { background: #f9fafb; border-color: #531B24; transform: translateX(4px); }
+    .point-card.selected { background: linear-gradient(135deg, #fef3f2 0%, #fff 100%); border-color: #531B24; border-width: 3px; box-shadow: 0 4px 12px rgba(83, 27, 36, 0.15); }
+    .itinerary-item { border-left: 4px solid #3b82f6; background: white; padding: 1.25rem; margin-bottom: 0.75rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .itinerary-item.pickup { border-left-color: #10b981; background: linear-gradient(135deg, #f0fdf4 0%, #fff 100%); }
+    .itinerary-item.dropoff { border-left-color: #ef4444; background: linear-gradient(135deg, #fef2f2 0%, #fff 100%); }
+    .section-title { font-size: 1.125rem; font-weight: 600; color: #1f2937; margin-bottom: 1rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="p-6">
+    <div class="bg-white rounded-lg shadow-lg p-6 max-w-5xl mx-auto">
+        <h2 class="text-2xl font-bold mb-6 text-[#531B24]">Create Tour Package</h2>
+
+        <!-- Step Wizard -->
+        <div class="step-wizard">
+            <div class="step active" data-step="1">
+                <div class="step-circle">1</div>
+                <div class="step-label">Basic Info</div>
+            </div>
+            <div class="step" data-step="2">
+                <div class="step-circle">2</div>
+                <div class="step-label">Pickup</div>
+            </div>
+            <div class="step" data-step="3">
+                <div class="step-circle">3</div>
+                <div class="step-label">Stops</div>
+            </div>
+            <div class="step" data-step="4">
+                <div class="step-circle">4</div>
+                <div class="step-label">Dropoff</div>
+            </div>
+            <div class="step" data-step="5">
+                <div class="step-circle">5</div>
+                <div class="step-label">Review</div>
+            </div>
+        </div>
+
+        <form id="packageForm">
+            {% csrf_token %}
+
+            <!-- Step 1: Basic Info -->
+            <div class="step-content active" data-step="1">
+                <h3 class="text-lg font-semibold mb-4">Package Details</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Photos</label>
+                        <input type="file" id="photoInput" accept="image/*" multiple class="w-full border rounded-md p-2">
+                        <div id="photoPreview" class="flex gap-2 mt-2 overflow-x-auto"></div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Package Name *</label>
+                        <input type="text" name="package_name" required minlength="3" maxlength="100" class="w-full border rounded-md p-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Description *</label>
+                        <textarea name="description" rows="3" required minlength="10" maxlength="500" class="w-full border rounded-md p-2"></textarea>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Price (₱) *</label>
+                            <input type="number" name="price" min="1" required class="w-full border rounded-md p-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Price Type *</label>
+                            <select name="price_type" required class="w-full border rounded-md p-2">
+                                <option value="per_person">Per Person</option>
+                                <option value="per_hour">Per Hour</option>
+                                <option value="fixed">Fixed (One-time)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Max Passengers *</label>
+                            <input type="number" name="max_pax" min="1" max="4" required class="w-full border rounded-md p-2" placeholder="Max: 4">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Pickup Point -->
+            <div class="step-content" data-step="2">
+                <h3 class="text-lg font-semibold mb-4">Select Pickup Point</h3>
+                <div id="pickupMap" class="map-container"></div>
+                <div id="pickupList" class="mt-4 max-h-60 overflow-y-auto"></div>
+                <input type="hidden" name="pickup_location">
+                <input type="hidden" name="pickup_lat">
+                <input type="hidden" name="pickup_lng">
+            </div>
+
+            <!-- Step 3: Tour Stops -->
+            <div class="step-content" data-step="3">
+                <h3 class="text-lg font-semibold mb-4">Add Tour Stops</h3>
+                <p class="text-sm text-gray-600 mb-4">Select places to visit (museums, parks, churches, etc.)</p>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <div id="stopsMap" class="map-container"></div>
+                        <div id="stopsList" class="mt-4 max-h-60 overflow-y-auto"></div>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold mb-2">Selected Stops</h4>
+                        <div id="selectedStops" class="space-y-2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: Dropoff Point -->
+            <div class="step-content" data-step="4">
+                <h3 class="text-lg font-semibold mb-4">Select Dropoff Point</h3>
+                <div id="dropoffMap" class="map-container"></div>
+                <div id="dropoffList" class="mt-4 max-h-60 overflow-y-auto"></div>
+                <input type="hidden" name="destination">
+                <input type="hidden" name="dropoff_lat">
+                <input type="hidden" name="dropoff_lng">
+            </div>
+
+            <!-- Step 5: Review -->
+            <div class="step-content" data-step="5">
+                <h3 class="text-lg font-semibold mb-4">Review Itinerary</h3>
+                <div id="reviewContent"></div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="flex justify-between mt-6">
+                <button type="button" onclick="prevStep()" id="prevBtn" class="px-6 py-2 border rounded-full" style="display:none;">Previous</button>
+                <button type="button" onclick="nextStep()" id="nextBtn" class="px-6 py-2 bg-[#531B24] text-white rounded-full">Next</button>
+                <button type="submit" id="submitBtn" class="px-6 py-2 bg-[#531B24] text-white rounded-full" style="display:none;">Create Package</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+let currentStep = 1;
+let maps = {};
+let pickupPoints = [];
+let stops = [];
+let dropoffPoints = [];
+let selectedPickup = null;
+let selectedStops = [];
+let selectedDropoff = null;
+let selectedPhotos = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+    initMaps();
+    loadPickupPoints();
+    
+    document.getElementById('photoInput').addEventListener('change', (e) => {
+        const files = Array.from(e.target.files);
+        files.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                selectedPhotos.push({file: file, url: ev.target.result});
+                renderPhotoPreview();
+            };
+            reader.readAsDataURL(file);
+        });
+    });
+});
+
+function renderPhotoPreview() {
+    const preview = document.getElementById('photoPreview');
+    preview.innerHTML = selectedPhotos.map((photo, idx) => `
+        <div class="relative w-20 h-20 border rounded">
+            <img src="${photo.url}" class="w-full h-full object-cover rounded">
+            <button type="button" onclick="removePhoto(${idx})" class="absolute -top-2 -right-2 w-6 h-6 bg-red-600 text-white rounded-full text-xs">&times;</button>
+        </div>
+    `).join('');
+}
+
+function removePhoto(idx) {
+    selectedPhotos.splice(idx, 1);
+    renderPhotoPreview();
+}
+
+function initMaps() {
+    ['pickupMap', 'stopsMap', 'dropoffMap'].forEach(id => {
+        maps[id] = L.map(id).setView([10.3157, 123.8854], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(maps[id]);
+    });
+}
+
+function loadPickupPoints() {
+    fetch('/api/tourpackage/get_pickup_points/')
+        .then(r => r.json())
+        .then(data => {
+            pickupPoints = data.data || [];
+            renderPickupList();
+            pickupPoints.forEach(p => {
+                L.marker([p.latitude, p.longitude]).addTo(maps.pickupMap)
+                    .bindPopup(p.name)
+                    .on('click', () => selectPickup(p));
+            });
+        });
+}
+
+function renderPickupList() {
+    const list = document.getElementById('pickupList');
+    list.innerHTML = pickupPoints.map(p => 
+        `<div class="point-card" onclick='selectPickup(${JSON.stringify(p).replace(/'/g, "&apos;")})'>${p.name}</div>`
+    ).join('');
+}
+
+function selectPickup(point) {
+    selectedPickup = point;
+    document.querySelector('[name="pickup_location"]').value = point.name;
+    document.querySelector('[name="pickup_lat"]').value = point.latitude;
+    document.querySelector('[name="pickup_lng"]').value = point.longitude;
+    
+    document.querySelectorAll('#pickupList .point-card').forEach(el => el.classList.remove('selected'));
+    event.target.classList.add('selected');
+    maps.pickupMap.setView([point.latitude, point.longitude], 15);
+}
+
+function loadStops() {
+    fetch('/api/tourpackage/get_stops/')
+        .then(r => r.json())
+        .then(data => {
+            stops = (data.data || []).filter(s => s.point_type !== 'pickup' && s.point_type !== 'dropoff');
+            renderStopsList();
+            stops.forEach(s => {
+                L.marker([s.latitude, s.longitude]).addTo(maps.stopsMap)
+                    .bindPopup(s.name)
+                    .on('click', () => toggleStop(s));
+            });
+        });
+}
+
+function renderStopsList() {
+    const list = document.getElementById('stopsList');
+    list.innerHTML = stops.map(s => {
+        const isSelected = selectedStops.some(st => st.id === s.id);
+        return `<div class="point-card ${isSelected ? 'selected' : ''}" onclick='toggleStop(${JSON.stringify(s).replace(/'/g, "&apos;")})'>${s.name}<br><small class="text-gray-600">${s.point_type || ''}</small></div>`;
+    }).join('');
+}
+
+function toggleStop(stop) {
+    const idx = selectedStops.findIndex(s => s.id === stop.id);
+    if (idx >= 0) {
+        selectedStops.splice(idx, 1);
+    } else {
+        selectedStops.push(stop);
+    }
+    renderStopsList();
+    renderSelectedStops();
+}
+
+function renderSelectedStops() {
+    const container = document.getElementById('selectedStops');
+    container.innerHTML = selectedStops.map((s, i) => `
+        <div class="border rounded p-2 bg-gray-50">
+            <div class="flex justify-between items-start">
+                <div class="flex-1">
+                    <div class="font-semibold text-sm">${i + 1}. ${s.name}</div>
+                    <div class="text-xs text-gray-600 mt-1">Duration (hours):</div>
+                    <input type="number" min="0" max="24" value="1" onchange="updateStopDuration(${i}, this.value)" class="w-20 border rounded px-2 py-1 text-sm mt-1">
+                </div>
+                <button type="button" onclick="removeStop(${i})" class="text-red-600 text-xl">&times;</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateStopDuration(idx, hours) {
+    if (selectedStops[idx]) {
+        selectedStops[idx].duration_hours = parseInt(hours) || 1;
+    }
+}
+
+function removeStop(idx) {
+    selectedStops.splice(idx, 1);
+    renderStopsList();
+    renderSelectedStops();
+}
+
+function loadDropoffPoints() {
+    fetch('/api/tourpackage/get_dropoff_points/')
+        .then(r => r.json())
+        .then(data => {
+            dropoffPoints = data.data || [];
+            renderDropoffList();
+            dropoffPoints.forEach(p => {
+                L.marker([p.latitude, p.longitude]).addTo(maps.dropoffMap)
+                    .bindPopup(p.name)
+                    .on('click', () => selectDropoff(p));
+            });
+        });
+}
+
+function renderDropoffList() {
+    const list = document.getElementById('dropoffList');
+    list.innerHTML = dropoffPoints.map(p => 
+        `<div class="point-card" onclick='selectDropoff(${JSON.stringify(p).replace(/'/g, "&apos;")})'>${p.name}</div>`
+    ).join('');
+}
+
+function selectDropoff(point) {
+    selectedDropoff = point;
+    document.querySelector('[name="destination"]').value = point.name;
+    document.querySelector('[name="dropoff_lat"]').value = point.latitude;
+    document.querySelector('[name="dropoff_lng"]').value = point.longitude;
+    
+    document.querySelectorAll('#dropoffList .point-card').forEach(el => el.classList.remove('selected'));
+    event.target.classList.add('selected');
+    maps.dropoffMap.setView([point.latitude, point.longitude], 15);
+}
+
+function showModal(message, type = 'error') {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg p-6 max-w-sm mx-4 text-center">
+            <div class="${type === 'error' ? 'text-red-600' : 'text-green-600'} text-5xl mb-4">${type === 'error' ? '⚠' : '✓'}</div>
+            <p class="text-gray-800 mb-4">${message}</p>
+            <button onclick="this.closest('.fixed').remove()" class="px-6 py-2 bg-[#531B24] text-white rounded-full hover:bg-[#6d2d37]">OK</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+function nextStep() {
+    if (currentStep === 1) {
+        const name = document.querySelector('[name="package_name"]').value;
+        const desc = document.querySelector('[name="description"]').value;
+        const price = parseFloat(document.querySelector('[name="price"]').value);
+        const maxPax = parseInt(document.querySelector('[name="max_pax"]').value);
+        
+        if (!name || name.length < 3) {
+            showModal('Package name must be at least 3 characters');
+            return;
+        }
+        if (!desc || desc.length < 10) {
+            showModal('Description must be at least 10 characters');
+            return;
+        }
+        if (!price || price < 1) {
+            showModal('Price must be at least ₱1');
+            return;
+        }
+        if (!maxPax || maxPax < 1 || maxPax > 4) {
+            showModal('Max passengers must be between 1 and 4');
+            return;
+        }
+    }
+    if (currentStep === 2 && !selectedPickup) {
+        showModal('Please select a pickup point');
+        return;
+    }
+    if (currentStep === 3 && selectedStops.length === 0) {
+        showModal('Please select at least one stop');
+        return;
+    }
+    if (currentStep === 4 && !selectedDropoff) {
+        showModal('Please select a dropoff point');
+        return;
+    }
+    
+    if (currentStep < 5) {
+        currentStep++;
+        updateStepDisplay();
+        
+        if (currentStep === 3) loadStops();
+        if (currentStep === 4) loadDropoffPoints();
+        if (currentStep === 5) showReview();
+    }
+}
+
+function prevStep() {
+    if (currentStep > 1) {
+        currentStep--;
+        updateStepDisplay();
+    }
+}
+
+function updateStepDisplay() {
+    document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
+    document.querySelector(`.step-content[data-step="${currentStep}"]`).classList.add('active');
+    
+    document.querySelectorAll('.step').forEach((el, idx) => {
+        el.classList.remove('active', 'completed');
+        if (idx + 1 < currentStep) el.classList.add('completed');
+        if (idx + 1 === currentStep) el.classList.add('active');
+    });
+    
+    document.getElementById('prevBtn').style.display = currentStep > 1 ? 'block' : 'none';
+    document.getElementById('nextBtn').style.display = currentStep < 5 ? 'block' : 'none';
+    document.getElementById('submitBtn').style.display = currentStep === 5 ? 'block' : 'none';
+    
+    setTimeout(() => {
+        if (maps[`${['', 'pickup', 'pickup', 'stops', 'dropoff'][currentStep]}Map`]) {
+            maps[`${['', 'pickup', 'pickup', 'stops', 'dropoff'][currentStep]}Map`].invalidateSize();
+        }
+    }, 100);
+}
+
+function showReview() {
+    const itinerary = [];
+    let order = 1;
+    
+    if (selectedPickup) {
+        itinerary.push({
+            step_order: order++,
+            location_name: selectedPickup.name,
+            location_type: 'pickup',
+            latitude: selectedPickup.latitude,
+            longitude: selectedPickup.longitude,
+            duration_hours: 0,
+            duration_minutes: 0
+        });
+    }
+    
+    selectedStops.forEach(s => {
+        itinerary.push({
+            step_order: order++,
+            location_name: s.name,
+            location_type: 'stop',
+            latitude: s.latitude,
+            longitude: s.longitude,
+            duration_hours: s.duration_hours || 1,
+            duration_minutes: 0
+        });
+    });
+    
+    if (selectedDropoff) {
+        itinerary.push({
+            step_order: order++,
+            location_name: selectedDropoff.name,
+            location_type: 'dropoff',
+            latitude: selectedDropoff.latitude,
+            longitude: selectedDropoff.longitude,
+            duration_hours: 0,
+            duration_minutes: 0
+        });
+    }
+    
+    const totalHours = itinerary.reduce((sum, i) => sum + i.duration_hours, 0);
+    
+    document.getElementById('reviewContent').innerHTML = `
+        <div class="space-y-4">
+            <div><strong>Package:</strong> ${document.querySelector('[name="package_name"]').value}</div>
+            <div><strong>Price:</strong> ₱${document.querySelector('[name="price"]').value} ${document.querySelector('[name="price_type"]').value === 'fixed' ? '(Fixed)' : document.querySelector('[name="price_type"]').value.replace('_', ' ')}</div>
+            <div><strong>Total Duration:</strong> ${totalHours} hours</div>
+            <div><strong>Itinerary:</strong></div>
+            ${itinerary.map(i => `
+                <div class="itinerary-item ${i.location_type}">
+                    <div class="font-semibold">${i.step_order}. ${i.location_name}</div>
+                    <div class="text-sm text-gray-600">${i.location_type.toUpperCase()} ${i.duration_hours > 0 ? `- ${i.duration_hours}h` : ''}</div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+    
+    window.itineraryData = itinerary;
+}
+
+document.getElementById('packageForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    
+    const maxPax = parseInt(formData.get('max_pax'));
+    if (maxPax < 1 || maxPax > 4) {
+        showModal('Max passengers must be between 1 and 4');
+        return;
+    }
+    
+    let photoUrls = [];
+    if (selectedPhotos.length > 0) {
+        try {
+            const photosData = selectedPhotos.map((photo, idx) => ({
+                photo: photo.url,
+                filename: photo.file.name || `photo_${idx + 1}.jpg`
+            }));
+            
+            const uploadResponse = await fetch('/api/upload/multiple-photos/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                },
+                body: JSON.stringify({
+                    photos: photosData,
+                    bucket_type: 'tourpackage'
+                })
+            });
+            const uploadResult = await uploadResponse.json();
+            if (uploadResult.success && uploadResult.data) {
+                photoUrls = uploadResult.data.uploaded_photos || [];
+            }
+        } catch (err) {
+            console.warn('Photo upload failed:', err);
+        }
+    }
+    
+    const data = {
+        package_name: formData.get('package_name'),
+        description: formData.get('description'),
+        price: parseFloat(formData.get('price')),
+        price_type: formData.get('price_type'),
+        max_pax: maxPax,
+        photos: photoUrls,
+        pickup_location: formData.get('pickup_location'),
+        pickup_lat: parseFloat(formData.get('pickup_lat')),
+        pickup_lng: parseFloat(formData.get('pickup_lng')),
+        destination: formData.get('destination'),
+        dropoff_lat: parseFloat(formData.get('dropoff_lat')),
+        dropoff_lng: parseFloat(formData.get('dropoff_lng')),
+        duration_hours: window.itineraryData.reduce((s, i) => s + i.duration_hours, 0),
+        duration_minutes: 0,
+        itinerary: window.itineraryData
+    };
+    
+    try {
+        const response = await fetch('/api/tourpackage/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            showSuccessModal();
+        } else {
+            showModal('Error: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        showModal('Error: ' + error.message);
+    }
+});
+
+function showSuccessModal() {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg p-6 max-w-sm mx-4 text-center">
+            <div class="text-green-600 text-5xl mb-4">✓</div>
+            <h3 class="text-xl font-bold mb-2">Success!</h3>
+            <p class="text-gray-600 mb-4">Tour package created successfully</p>
+            <button onclick="window.location.href='/tourpackage/view/'" class="px-6 py-2 bg-[#531B24] text-white rounded-full hover:bg-[#6d2d37]">View Packages</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    setTimeout(() => window.location.href = '/tourpackage/view/', 2000);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,38 @@
+<div id="newChatModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+        <!-- Modal Header -->
+        <div class="border-b border-gray-200 p-4">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-medium text-[#561c24]">New Conversation</h3>
+                <button id="closeNewChatModal" class="text-gray-400 hover:text-gray-500">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Tab Navigation -->
+        <div class="flex border-b border-gray-200">
+            <button id="driversTab" class="flex-1 py-3 px-4 text-center text-[#561c24] border-b-2 border-[#561c24] font-medium">
+                Drivers
+            </button>
+            <button id="ownersTab" class="flex-1 py-3 px-4 text-center text-gray-500 hover:text-[#561c24]">
+                Owners
+            </button>
+        </div>
+        
+        <!-- User Lists -->
+        <div class="max-h-[400px] overflow-y-auto p-2">
+            <!-- Drivers List -->
+            <div id="driversList" class="space-y-2">
+                <div class="text-center py-8 text-gray-500">Loading drivers...</div>
+            </div>
+            
+            <!-- Owners List -->
+            <div id="ownersList" class="hidden space-y-2">
+                <div class="text-center py-8 text-gray-500">Loading owners...</div>
+            </div>
+        </div>
+    </div>
+</div>

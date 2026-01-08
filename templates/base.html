@@ -1,0 +1,86 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dashboard - TarTrack{% endblock %}</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css">
+
+
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Poppins', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary-dark': '#531B24',
+                        'primary-medium': '#6A2931',
+                        'accent-light': '#c7b7a3',
+                        'accent-lightest': '#e8d8c4',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Custom CSS with version number -->
+    <link rel="stylesheet" href="{% static 'css/sidebar.css' %}?v=1.2">
+    <link rel="stylesheet" href="{% static 'css/responsive.css' %}?v=1.0">
+    
+    <!-- Additional CSS -->
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-[#F5F5F5] font-sans">
+    
+    <!-- Mobile Sidebar Overlay -->
+    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
+    
+    <!-- Include Sidebar -->
+    {% include 'includes/sidebar.html' %}
+
+    <!-- Main Content Area -->
+    <div class="md:ml-[280px] transition-all duration-300">
+        {% block content %}
+        <!-- Child templates will override this block -->
+        {% endblock %}
+    </div>
+
+    <!-- JavaScript Files with version number -->
+    <!-- <script src="{% static 'js/sidebar.js' %}?v=1.2"></script> -->
+    
+    <!-- Additional JavaScript -->
+     <!-- <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script> -->
+     <script src="{% static 'js/sidebar_notification_badges.js' %}"></script>
+     <script src="{% static 'js/success-modal.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+    // Mobile sidebar toggle
+    function toggleMobileSidebar() {
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('active');
+    }
+</script>
+<script>
+    window.supabaseUrl = "https://sncruycikvfnkrmmbjxr.supabase.co";
+    window.supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNuY3J1eWNpa3ZmbmtybW1ianhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwMTQ1NDIsImV4cCI6MjA2NjU5MDU0Mn0.NOJVi5idcC3hIZVl5W6Spjs-DBH0_mDINc0Jr0H5v7s";
+    if (window.supabaseUrl && window.supabaseKey) {
+        window.supabase = supabase.createClient(window.supabaseUrl, window.supabaseKey);
+    }
+
+    // Set admin user ID globally
+    window.adminUserId = "{{ user_id|default:'' }}";
+</script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

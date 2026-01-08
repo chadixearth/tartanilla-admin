@@ -1,0 +1,220 @@
+
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login - TarTrack</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    .error-message {
+      color: #d32f2f;
+      font-size: 14px;
+      text-align: center;
+      margin-bottom: 15px;
+      padding: 10px;
+      background-color: #ffebee;
+      border: 1px solid #ffcdd2;
+      border-radius: 8px;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Poppins' , sans-serif;
+      background-color: #F5F5F5;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      display: flex;
+      width: 450px;
+      margin-left: 80px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      border: 1px solid #ccc;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .form-side {
+      flex: 1;
+      padding: 40px;
+      background-color: white;
+    }
+
+    .form-side h2 {
+      font-size: 35px;
+      font-weight: bold;
+      text-align: center;
+      color: #000000;
+      margin-bottom: 5px;
+    }
+
+    .form-side h3 {
+      font-size: 35px;
+      font-weight:bold;
+      text-align: center;
+      color: #000000;
+      margin-bottom: 30px;
+      margin-top: 0;
+    }
+
+    .error-message {
+      color: red;
+      font-size: 14px;
+      text-align: center;
+      margin-bottom: 15px;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #555;
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+
+    label svg {
+      margin-right: 8px;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 8px;
+      border: none;
+      border-bottom: 2px solid #ccc;
+      outline: none;
+      font-size: 14px;
+      margin-right: 0px;
+      padding-right: 0%;
+    }
+
+    input[type="text"]:focus,
+    input[type="password"]:focus {
+      border-color: #531B24;
+    }
+
+    .forgot-password {
+      text-align: right;
+      margin-top: 5px;
+    }
+
+    .forgot-password a {
+      font-size: 13px;
+      color: #531B24;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .forgot-password a:hover {
+      text-decoration: underline;
+    }
+
+    button {
+      background-color: #531B24;
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 9999px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #6d2a34;
+    }
+
+    .logo-side {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 50%;
+      padding: 40px;
+    }
+
+    .logo-side img {
+      width: 500px;
+      max-width: 100%;
+      height: auto;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+      }
+      .logo-side {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Left Side - Form -->
+    <div class="form-side">
+      <h2>Sign In</h2>
+      <h3>To Your Account</h3>
+
+      {% if error %}
+        <p class="error-message">{{ error }}</p>
+      {% endif %}
+      
+
+      <form method="post">
+        {% csrf_token %}
+
+        <!-- Email -->
+        <div>
+          <label>
+            <svg fill="currentColor" viewBox="0 0 20 20" width="20" height="20">
+              <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v1H2V5zM2 8h16v5a2 2 0 01-2 2H4a2 2 0 01-2-2V8zm7 3h2v2H9v-2z" />
+            </svg>
+            Email
+          </label>
+          <input type="email" name="email" required>
+        </div>
+
+        <!-- Password -->
+        <div>
+          <label>
+            <svg fill="currentColor" viewBox="0 0 24 24" width="20" height="20">
+              <path d="M12 17a2 2 0 110-4 2 2 0 010 4zm6-8V7a6 6 0 10-12 0v2H4v12h16V9h-2zM8 7a4 4 0 118 0v2H8V7z" />
+            </svg>
+            Password
+          </label>
+          <input type="password" name="password" required>
+          <div class="forgot-password">
+            <a href="#">Forget Password</a>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit">Login</button>
+      </form>
+      <p style="text-align:center; margin-top:20px; font-size:14px; color:#555;">Don't have an account? <a href="{% url 'registration' %}" style="color:#531B24; font-weight:600; text-decoration:none;">Register here</a>.</p>
+    </div>
+  </div>
+
+  <!-- Right Side - Logo -->
+    <div class="logo-side">
+      <span class="sidebar-subtitle" style="font-size:x-large;">W e l c o m e</span>
+      <img src="{% static 'img/TarTrack Logo_sakto.png' %}" alt="TarTrack Logo">
+    </div>
+</body>
+</html>

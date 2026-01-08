@@ -1,0 +1,373 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta charset="UTF-8">
+  <title>Login - TarTrack</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --primary:#531B24;
+      --primary-700:#6d2a34;
+      --bg:#F5F5F5;
+      --text:#0F172A;
+      --muted:#6B7280;
+      --white:#FFFFFF;
+      --danger:#d32f2f;
+      --danger-bg:#ffebee;
+      --danger-br:#ffcdd2;
+      --ring:#e3d2d7;
+    }
+
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:'Poppins',sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      overflow-x:hidden;
+    }
+
+    /* ====== LAYOUT ====== */
+    .auth-shell{
+      min-height:100vh;
+      display:grid;
+      grid-template-columns: 1.15fr 0.95fr;
+      align-items:stretch;
+    }
+
+    .left-side{
+      position:relative;
+      display:flex; align-items:center; justify-content:center;
+      padding:40px 24px;
+      background: radial-gradient(120% 140% at 15% 10%, #fff 0%, #f7f7f7 50%, #f1f1f1 100%);
+    }
+    .brand-corner{
+      position:absolute; left:24px; top:20px;
+      display:flex; align-items:center; gap:12px;
+    }
+    .brand-corner img{height:44px}
+    .brand-corner .brand{display:flex; flex-direction:column; line-height:1.05;}
+    .brand .name{font-weight:800; font-size:18px; color:var(--primary); letter-spacing:.2px}
+    .brand .tag{font-weight:600; font-size:12px; color:#7a5a60}
+
+    .right-panel{
+      position:relative;
+      background:var(--primary);
+      color:#E8E8E8;
+      display:flex; align-items:center; justify-content:center;
+      padding:40px 24px;
+      overflow:hidden;
+      clip-path: ellipse(92% 120% at 100% 50%);
+      isolation:isolate;
+    }
+   
+
+    /* ====== FORM ====== */
+    .form-box{
+      width:min(440px, 92%);
+      margin-top: 50px;
+      background:#fff;
+      border:1px solid #e8e8e8;
+      border-radius:24px;
+      padding:36px 32px 30px;
+      box-shadow:
+        0 20px 50px rgba(0,0,0,.08),
+        0 2px 10px rgba(0,0,0,.04),
+        inset 0 1px 0 rgba(255,255,255,.9);
+      transition: box-shadow .3s ease, transform .2s ease;
+    }
+    .form-box:hover{ transform: translateY(-1px); box-shadow: 0 26px 60px rgba(0,0,0,.10), 0 6px 20px rgba(0,0,0,.06); }
+
+    .form-header{
+      display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:18px;
+    }
+    .form-title{ margin:0; font-size:28px; font-weight:900; letter-spacing:.2px; color:#0b0b0b; }
+    .form-sub{ margin:0; font-size:14px; color:#6B7280; font-weight:600; }
+    .accent-bar{ margin-top:6px; width:72px; height:6px; border-radius:999px; background:linear-gradient(90deg, #c9b2b7, #531B24); }
+
+    .error-message{
+      color:var(--danger);
+      font-size:14px;
+      text-align:center;
+      margin-bottom:12px;
+      padding:10px 12px;
+      background-color:var(--danger-bg);
+      border:1px solid var(--danger-br);
+      border-radius:10px;
+    }
+
+    form{ display:flex; flex-direction:column; gap:18px; }
+
+    /* ====== FLOATING INPUTS ====== */
+    .float-group{ position:relative; padding-top:18px; }
+    .input-wrap{ position:relative; } /* NEW: contains input + label + eye */
+
+    .float-input{
+      width:100%;
+      font-size:15px;
+      padding:10px 0 12px;
+      background:
+        linear-gradient(var(--primary), var(--primary)) left bottom/0 2px no-repeat,
+        linear-gradient(#e5e7eb, #e5e7eb) left bottom/100% 1px no-repeat;
+      border:none; outline:none; box-shadow:none;
+      color:#0F172A;
+      transition: background-size .25s ease, color .2s ease;
+    }
+    /* reserve space for eye so layout never shifts */
+    .password .float-input{ padding-right:1px; }
+
+    .float-input::placeholder{ color:transparent; }
+    .float-input:focus{ background-size:100% 2px, 100% 1px; }
+
+    .float-label{
+      position:absolute; left:0; bottom:12px; pointer-events:none;
+      font-size:14px; font-weight:700; color:#6b7280;
+      transform-origin:left bottom;
+      transition: transform .18s ease, color .18s ease, opacity .18s ease;
+      will-change: transform;
+    }
+    .float-input:focus + .float-label,
+    .float-input:not(:placeholder-shown) + .float-label{
+      transform: translateY(-18px) scale(.86);
+      color:var(--primary);
+      opacity:.95;
+    }
+    /* prefilled/autofill state */
+    .float-input.filled + .float-label,
+    input.float-input:-webkit-autofill + .float-label{
+      transform: translateY(-18px) scale(.86);
+      color:var(--primary);
+      opacity:.95;
+    }
+
+    /* Eye button is absolutely positioned so it never affects width */
+    .toggle-pass{
+      position:absolute; right:0; bottom:8px;
+      background:transparent; border:none; cursor:pointer; padding:6px;
+      border-radius:10px; color:#6b7280; line-height:0;
+    }
+    .toggle-pass:hover{ color:#4b4b56; }
+    .toggle-pass:focus-visible{ outline:none; box-shadow:0 0 0 3px var(--ring); }
+    .toggle-pass svg{ transition: transform .15s ease; }
+    .toggle-pass:active svg{ transform: scale(.92); }
+
+    /* Forgot password under the field */
+    .forgot-password{ margin-top:6px; text-align:right; }
+    .forgot-password a{ font-size:13px; color:var(--primary); text-decoration:none; font-weight:600; }
+    .forgot-password a:hover{ text-decoration:underline; }
+
+    .caps-hint{
+      display:flex; align-items:center; gap:3px;
+      font-size:12px; color:#6b7280; margin-top:8px; margin-right:0; opacity:0; transition:opacity .15s ease;
+    }
+    .caps-hint svg{ flex:0 0 14px; }
+
+    .submit-btn{
+      margin-top:4px;
+      background:#6d2a34;
+      color:#ffffff;
+      padding:12px 16px;
+      border:none; border-radius:14px;
+      font-size:16px; font-weight:600;
+      cursor:pointer;
+      transition: transform .05s ease, box-shadow .25s ease, background .25s ease;
+      box-shadow:
+        0 14px 30px rgba(83,27,36,0.18),
+        inset 0 1px 0 rgba(255,255,255,0.9);
+    }
+    .submit-btn:hover{ transform: translateY(-1px); }
+    .submit-btn:active{ transform: translateY(0); box-shadow: 0 10px 24px rgba(83,27,36,0.22); }
+
+    .below-note{ text-align:center; margin-top:0; font-size:14px; color:#4b4b56; font-weight:300; margin-bottom:0; }
+    .below-note a{ color:var(--primary); font-weight:600; text-decoration:none; }
+    .below-note a:hover{ text-decoration:underline; }
+
+    /* Driver/Owner CTA */
+    .secondary-cta{
+      padding-top:14px; border-top:1px solid #e5e7eb;
+      text-align:center; font-size:14px; color:#4b4b56; font-weight:600;
+    }
+    .secondary-cta .cta-text{ margin-bottom:8px; }
+    .secondary-cta a{
+      color:var(--primary); font-weight:800; text-decoration:none;
+      background:#f5f5f5; padding:8px 16px; border-radius:999px; display:inline-block;
+    }
+    .secondary-cta a:hover{ background:#ececec; }
+
+    .right-content{ width:min(760px,92%); display:flex; flex-direction: column; align-items:center; justify-content:center; text-align:center; position:relative; gap:12px;  }
+    .logo-pulse-wrap img{
+      margin-left:50px;
+      width:100%; height:100%; object-fit:contain;
+      opacity:.7; /* similar to opacity-70 */
+      animation: pulseOpacity 1.5s ease-in-out infinite;
+      filter: drop-shadow(0 10px 26px rgba(0,0,0,.20));
+    }
+    @keyframes pulseOpacity{
+      0%, 100%{ opacity:.7; }
+      50%{ opacity:.4; }
+    }
+    @media (prefers-reduced-motion: reduce){
+      .right-panel::before, .right-panel::after, .logo-pulse-wrap img{ animation: none !important }
+    }
+
+    @media (max-width: 1000px){
+      .auth-shell{ grid-template-columns: 1fr; }
+      .right-panel{ clip-path:none; border-top-left-radius:24px; border-top-right-radius:24px; padding-top:26px; }
+      .form-box{ width: min(520px, 94%); }
+    }
+
+    /* "WELCOME TO" text */
+    .welcome-text{
+      margin-left: 80px;
+      text-transform:uppercase;
+      font-weight:600;
+      letter-spacing:1em;
+      font-size: clamp(14px, 1.6vw, 18px);
+      color:#ffffff;
+      opacity:.9;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
+      animation: pulseOpacity 1.5s ease-in-out infinite; /* same timing as logo */
+    }
+
+    /* Respect reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      .welcome-text{ animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="auth-shell">
+
+    <!-- LEFT -->
+    <section class="left-side">
+      <div class="brand-corner">
+        <img src="{% static 'img/TarTrack Logo_sakto.png' %}" alt="TarTrack logo">
+        <div class="brand">
+          <span class="name">TarTrack</span>
+          <span class="tag">Tartanilla tours & tracking</span>
+        </div>
+      </div>
+
+      <div class="form-box" role="region" aria-labelledby="login-title">
+        <div class="form-header">
+          <h2 id="login-title" class="form-title">Sign in</h2>
+          <p class="form-sub">Welcome back — let’s get you on track</p>
+          <div class="accent-bar"></div>
+        </div>
+
+        {% if error %}
+          <div class="error-message">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          <!-- Email -->
+          <div class="float-group">
+            <div class="input-wrap">
+              <input id="id_email" class="float-input" type="email" name="email" placeholder=" " required autocomplete="email" autofocus>
+              <label for="id_email" class="float-label">Email</label>
+            </div>
+          </div>
+
+          <!-- Password with eye (no layout shift) -->
+          <div class="float-group password">
+            <div class="input-wrap">
+              <input id="id_password" class="float-input" type="password" name="password" placeholder=" " required autocomplete="current-password">
+              <label for="id_password" class="float-label">Password</label>
+            </div>
+
+            <div class="forgot-password">
+              <a href="{% url 'accounts:forgot_password' %}">Forgot Password?</a>
+            </div>
+          </div>
+
+          <div id="caps-hint" class="caps-hint" aria-live="polite">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+              <path d="M12 3l7 7h-4v7h-6v-7H5l7-7zM5 20h14v2H5v-2z"/>
+            </svg>
+            Caps Lock is on
+          </div>
+
+          <button class="submit-btn" type="submit">Login</button>
+
+          <p class="below-note">
+            Don’t have an account?
+            <a href="{% url 'accounts:registration_view' %}">Register here</a>.
+          </p>
+          <!-- Driver/Owner CTA -->
+          <div class="secondary-cta">
+            <div class="cta-text">Applying as Driver or Owner?</div>
+            <a href="{% url 'accounts:driver_owner_application' %}">📝 Submit Application</a>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- RIGHT -->
+    <aside class="right-panel">
+      <div class="right-content" aria-hidden="true">
+        <div class="welcome-text">WELCOME TO</div>
+        <div class="logo-pulse-wrap">
+          <img src="{% static 'img/tartrack_whitel.png' %}" alt="TarTrack" />
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- JS -->
+  <script>
+    (function(){
+      // Float-on-value for both fields
+      const inputs = document.querySelectorAll('.float-input');
+      function applyFilled(el){
+        if (!el) return;
+        if ((el.value || '').trim() !== '') el.classList.add('filled');
+        else el.classList.remove('filled');
+      }
+      inputs.forEach(el => {
+        applyFilled(el);
+        ['input','change','blur'].forEach(ev => el.addEventListener(ev, () => applyFilled(el)));
+      });
+      window.addEventListener('load', () => setTimeout(() => inputs.forEach(applyFilled), 300));
+
+      // Eye toggle (no layout shift)
+      const pwd = document.getElementById('id_password');
+      const eye = document.querySelector('.password .toggle-pass');
+      if (pwd && eye){
+        let reveal = false;
+        const update = () => {
+          eye.setAttribute('aria-label', reveal ? 'Hide password' : 'Show password');
+          eye.title = reveal ? 'Hide password' : 'Show password';
+        };
+        eye.addEventListener('click', () => {
+          reveal = !reveal;
+          pwd.type = reveal ? 'text' : 'password';
+          update();
+          pwd.focus({ preventScroll:true });
+        });
+        update();
+      }
+
+      // Caps lock hint
+      const capsHint = document.getElementById('caps-hint');
+      if (pwd && capsHint){
+        const setCaps = (e) => {
+          const on = e.getModifierState && e.getModifierState('CapsLock');
+          capsHint.style.opacity = on ? '1' : '0';
+        };
+        ['keyup','keydown','focus'].forEach(ev => pwd.addEventListener(ev, setCaps));
+        pwd.addEventListener('blur', () => { capsHint.style.opacity = '0'; });
+      }
+    })();
+  </script>
+</body>
+</html>

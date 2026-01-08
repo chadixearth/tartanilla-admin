@@ -1,0 +1,1 @@
+# No models - using Supabase database directly

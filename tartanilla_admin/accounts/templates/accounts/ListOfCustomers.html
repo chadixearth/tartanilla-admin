@@ -1,0 +1,155 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Customers</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css">
+</head>
+<body class="p-0 md:p-6 ml-5">
+  <!-- Sidebar -->
+  {% include 'base.html' %}
+
+  <div class="flex flex-col md:ml-64 p-4 md:p-6">
+    <div class="bg-white rounded-none md:rounded-2xl shadow p-4 md:p-6 border border-[#531B24] w-full overflow-hidden">
+
+        <!-- Header -->
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4">
+        <div>
+          <h2 class="text-2xl font-semibold">List Of Tourist/Local Customers</h2>
+          <p class="text-sm text-[#531B24]">Active Users</p>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <div class="relative text-sm">
+            <input type="text" placeholder="Search"
+              class="pl-10 pr-4 py-2 w-full h-8 rounded-xl border border-[#531B24] focus:outline-none focus:ring-1 focus:ring-[#531B24]">
+            <i class="fas fa-search absolute left-3 top-2.5 text-[#531B24]"></i>
+          </div>
+          <div class="flex items-center justify-center text-sm m-0">
+            <select
+              class="pl-3 pr-8 w-full h-8 rounded-xl border border-[#531B24] text-gray-700 focus:outline-none focus:ring-1 focus:ring-[#6A2931]">
+              <option>Newest</option>
+              <option>Oldest</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table -->
+        <div class="overflow-x-auto rounded-xl">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="h-20">
+            <tr class="text-left text-gray-600 text-sm">
+              <th class="px-4 py-3">UserName</th>
+              <th class="px-4 py-3">Role</th>
+              <th class="px-4 py-3">Phone Number</th>
+              <th class="px-4 py-3">Status</th>
+              <th class="px-4 py-3">Email</th>
+              <th class="px-4 py-3">Address</th>
+              <th class="px-4 py-3">Action</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <!-- Example: loop over customers -->
+            {% for customer in customers %}
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-3">{{ customer.username }}</td>
+              <td class="px-4 py-3">{{ customer.role }}</td>
+              <td class="px-4 py-3">{{ customer.phone }}</td>
+              <td class="px-4 py-3 text-green-600">{{ customer.status }}</td>
+              <td class="px-4 py-3">{{ customer.email }}</td>
+              <td class="px-4 py-3">{{ customer.address }}</td>
+              <td class="px-4 py-3 space-x-2">
+                <button class="text-gray-600 hover:text-[#531B24]">
+                  <i class="fas fa-history"></i>
+                </button>
+                <button 
+                  onclick="openModal(this)"
+                  class="text-gray-600 hover:text-[#531B24]"
+                  data-username="{{ customer.username }}"
+                  data-role="{{ customer.role }}"
+                  data-phone="{{ customer.phone }}"
+                  data-status="{{ customer.status }}"
+                  data-email="{{ customer.email }}"
+                  data-address="{{ customer.address }}">
+                  <i class="fas fa-eye"></i>
+                </button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="7" class="px-4 py-3 text-center text-gray-500">No data found.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="flex flex-col sm:flex-row justify-between items-center mt-4 text-sm text-gray-600 gap-2">
+        <p>
+          Showing {{ customers.start_index }} to {{ customers.end_index }} of {{ customers.paginator.count }} entries
+        </p>
+        <div class="flex items-center space-x-1">
+          {% if customers.has_previous %}
+            <a href="?page={{ customers.previous_page_number }}" class="px-2 py-1 rounded hover:bg-gray-200">&lt;</a>
+          {% else %}
+            <span class="px-2 py-1 rounded text-gray-400">&lt;</span>
+          {% endif %}
+
+          {% for num in customers.paginator.page_range %}
+            {% if customers.number == num %}
+              <span class="px-3 py-1 rounded bg-[#531B24] text-white">{{ num }}</span>
+            {% elif num > customers.number|add:'-3' and num < customers.number|add:'3' %}
+              <a href="?page={{ num }}" class="px-2 py-1 rounded hover:bg-gray-200">{{ num }}</a>
+            {% endif %}
+          {% endfor %}
+
+          {% if customers.has_next %}
+            <a href="?page={{ customers.next_page_number }}" class="px-2 py-1 rounded hover:bg-gray-200">&gt;</a>
+          {% else %}
+            <span class="px-2 py-1 rounded text-gray-400">&gt;</span>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div id="DetailsModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl w-96 p-6 relative">
+      <h3 class="text-lg font-semibold mb-4">Customer Details</h3>
+      <ul class="space-y-2 text-sm text-gray-700">
+        <li><strong>UserName:</strong> <span id="modal-username"></span></li>
+        <li><strong>Role:</strong> <span id="modal-role"></span></li>
+        <li><strong>Phone:</strong> <span id="modal-phone"></span></li>
+        <li><strong>Status:</strong> <span id="modal-status"></span></li>
+        <li><strong>Email:</strong> <span id="modal-email"></span></li>
+        <li><strong>Address:</strong> <span id="modal-address"></span></li>
+      </ul>
+      <button onclick="closeModal()" class="mt-4 px-4 py-2 bg-[#531B24] text-white rounded-full hover:bg-[#6A2931]">Close</button>
+    </div>
+  </div>
+
+  <script src="{% static 'js/sidebar.js' %}"></script>
+  <!-- JS -->
+  <script>
+    function openModal(btn) {
+      // Get data attributes from clicked button
+      document.getElementById('modal-username').innerText = btn.getAttribute('data-username');
+      document.getElementById('modal-role').innerText = btn.getAttribute('data-role');
+      document.getElementById('modal-phone').innerText = btn.getAttribute('data-phone');
+      document.getElementById('modal-status').innerText = btn.getAttribute('data-status');
+      document.getElementById('modal-email').innerText = btn.getAttribute('data-email');
+      document.getElementById('modal-address').innerText = btn.getAttribute('data-address');
+      document.getElementById('DetailsModal').classList.remove('hidden');
+    }
+    function closeModal() {
+      document.getElementById('DetailsModal').classList.add('hidden');
+    }
+  </script>
+</body>
+</html>

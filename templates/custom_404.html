@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Not Found - TarTrack</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #561c24 0%, #6d2932 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #e8d8c4;
+        }
+
+        .container {
+            text-align: center;
+            padding: 2rem;
+            max-width: 600px;
+            background: rgba(199, 183, 163, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(232, 216, 196, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .error-code {
+            font-size: 8rem;
+            font-weight: 700;
+            color: #c7b7a3;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            margin-bottom: 1rem;
+            line-height: 1;
+        }
+
+        .error-title {
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: #e8d8c4;
+            margin-bottom: 1rem;
+        }
+
+        .error-message {
+            font-size: 1.2rem;
+            color: #c7b7a3;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .home-button {
+            display: inline-block;
+            padding: 15px 30px;
+            background-color: #561c24;
+            color: #e8d8c4;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            border: 2px solid #c7b7a3;
+            margin: 0 10px;
+        }
+
+        .home-button:hover {
+            background-color: #6d2932;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(199, 183, 163, 0.3);
+        }
+
+        .back-button {
+            display: inline-block;
+            padding: 15px 30px;
+            background-color: transparent;
+            color: #c7b7a3;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            border: 2px solid #c7b7a3;
+            margin: 0 10px;
+        }
+
+        .back-button:hover {
+            background-color: #c7b7a3;
+            color: #561c24;
+            transform: translateY(-2px);
+        }
+
+        .illustration {
+            margin-bottom: 2rem;
+        }
+
+        .illustration svg {
+            width: 150px;
+            height: 150px;
+            fill: #c7b7a3;
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            .error-code {
+                font-size: 6rem;
+            }
+            
+            .error-title {
+                font-size: 2rem;
+            }
+            
+            .error-message {
+                font-size: 1rem;
+            }
+            
+            .container {
+                margin: 1rem;
+                padding: 1.5rem;
+            }
+            
+            .home-button, .back-button {
+                display: block;
+                margin: 10px auto;
+                width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="illustration">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        
+        <div class="error-code">404</div>
+        <h1 class="error-title">Oops! Page Not Found</h1>
+        <p class="error-message">
+            The page you're looking for seems to have taken a detour. 
+            Don't worry, even the best navigators sometimes lose their way!
+        </p>
+        
+        <div class="button-group">
+            <a href="/" class="home-button">Go Home</a>
+            <a href="javascript:history.back()" class="back-button">Go Back</a>
+        </div>
+    </div>
+</body>
+</html>

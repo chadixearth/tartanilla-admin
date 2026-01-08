@@ -1,0 +1,167 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - TarTrack</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{% static 'css/sidebar.css' %}">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-dark': '#561c24',
+                        'primary-medium': '#6d2932',
+                        'accent-light': '#c7b7a3',
+                        'accent-lightest': '#e8d8c4',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-[#F5F5F5]">
+    {% include 'base.html' %}
+    
+    <!-- Main Content -->
+    <main class="md:ml-64 min-h-screen p-8 bg-[#f5f5f5] text-[#561c24] font-sans">
+        <div class="max-w-7xl mx-auto space-y-6 p-5">
+            <!-- Header -->
+            <div class="flex justify-between items-center border border-[#561c24] rounded-lg h-20">
+            <h1 class="text-3xl font-bold px-4 py-2 ">Dashboard</h1>
+            <div class="flex items-center gap-4">
+                <button>
+                <svg class="w-5 h-5 text-[#561c24]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V4a1 1 0 10-2 0v1.083A6 6 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                </button>
+                <div class="relative">
+                <input type="text" placeholder="Search..." class="pl-10 pr-4 py-1.5 text-sm rounded-full border border-[#561c24] focus:outline-none mr-5 h-8 w-50">
+                <svg class="w-4 h-4 absolute left-3 top-2 text-[#561c24]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1110.5 3a7.5 7.5 0 016.15 13.65z" />
+                </svg>
+                </div>
+            </div>
+            </div>
+
+            <!-- Users & Chart -->
+            <div class="grid lg:grid-cols-2 gap-6">
+            <!-- Users Card -->
+            <div class="bg-white border border-[#561c24] rounded-xl p-6">
+                <div class="flex justify-between items-center mb-4">
+                <h2 class="text-md font-semibold">Users</h2>
+                <p class="text-sm text-gray-600">Sort by Newest ⌄</p>
+                </div>
+                <ul class="space-y-2">
+                <li class="flex items-center gap-3">
+                    <img src="{% static 'img/TarTrack Logo_sakto.png' %}" class="rounded-full w-8 h-2" />
+                    <div>
+                    <p class="text-sm font-semibold text-black">Charles Leclerc</p>
+                    <p class="text-xs text-gray-600">Driver</p>
+                    </div>
+                </li>
+                <li class="flex items-center justify-between bg-[#c7b7a3] rounded-lg px-3 py-2">
+                    <div class="flex items-center gap-3">
+                    <img src="{% static 'img/TarTrack Logo_sakto.png' %}" class="rounded-full w-8 h-2" />
+                    <div>
+                        <p class="text-sm font-semibold text-black">Carlos Sainz Jr.</p>
+                        <p class="text-xs text-gray-600">Driver</p>
+                    </div>
+                    </div>
+                    <div class="flex items-center gap-2 text-[#6d2932]">
+                    <span class="text-sm">★</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15.232 5.232l3.536 3.536M9 13h6M12 10v6m-6 2h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    </div>
+                </li>
+                <li>
+                    <p class="text-sm font-semibold text-black">Max Verstappen</p>
+                    <p class="text-xs text-gray-600">Owner</p>
+                </li>
+                <li>
+                    <p class="text-sm font-semibold text-black">Lando Norris</p>
+                    <p class="text-xs text-gray-600">Tourist</p>
+                </li>
+                </ul>
+                <div class="flex gap-4 mt-4 text-sm text-[#6d2932] font-medium">
+                <a href="#">All users</a>
+                <a href="#">All drivers</a>
+                <a href="#">All owners</a>
+                </div>
+            </div>
+
+            <!-- Chart -->
+            <div class="bg-white border border-[#561c24] rounded-xl p-6">
+                <div class="flex justify-between items-center mb-4">
+                <h2 class="text-md font-semibold">Growth</h2>
+                <p class="text-sm text-gray-600">Yearly ⌄</p>
+                </div>
+                <div class="h-40 bg-gradient-to-t from-green-100 to-white rounded-lg flex items-center justify-center text-gray-400">
+                <span class="text-sm">Chart Placeholder</span>
+                </div>
+            </div>
+            </div>
+
+            <!-- Top Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6">
+            <div class="bg-white border border-[#561c24] rounded-xl p-4">
+                <p class="text-sm text-gray-500">Top month</p>
+                <p class="text-lg font-bold text-[#6d2932]">November</p>
+                <p class="text-xs text-gray-400">2019</p>
+            </div>
+            <div class="bg-white border border-[#561c24] rounded-xl p-4">
+                <p class="text-sm text-gray-500">Top year</p>
+                <p class="text-lg font-bold text-[#6d2932]">2023</p>
+                <p class="text-xs text-gray-400">96k sold so far</p>
+            </div>
+            <div class="bg-white border border-[#561c24] rounded-xl p-4 flex items-center gap-3">
+                <img src="{% static 'img/TarTrack Logo_sakto.png' %}" class="rounded-full w-10 h-3" />
+                <div>
+                <p class="text-sm text-gray-500">Top driver</p>
+                <p class="text-sm font-semibold text-[#6d2932]">Carlos Sainz Jr.</p>
+                <p class="text-xs text-gray-400">Driver</p>
+                </div>
+            </div>
+            </div>
+
+            <!-- Stat Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pt-2">
+            <div class="bg-white border border-[#561c24] rounded-xl p-4 text-center">
+                <p class="text-sm">Active Routes</p>
+                <p class="text-2xl font-bold">10</p>
+                <p class="text-green-500 text-xs">+10%</p>
+                <p class="text-sm text-right mt-1 text-[#6d2932]">View More</p>
+            </div>
+            <div class="bg-white border border-[#561c24] rounded-xl p-4 text-center">
+                <p class="text-sm">Earnings</p>
+                <p class="text-2xl font-bold">15.5k</p>
+                <p class="text-green-500 text-xs">+10%</p>
+                <p class="text-sm text-right mt-1 text-[#6d2932]">View More</p>
+            </div>
+            <div class="bg-white border border-[#561c24] rounded-xl p-4 text-center">
+                <p class="text-sm">Active Tartanillas</p>
+                <p class="text-2xl font-bold">60</p>
+                <p class="text-green-500 text-xs">+10%</p>
+                <p class="text-sm text-right mt-1 text-[#6d2932]">View More</p>
+            </div>
+            <div class="bg-white border border-[#561c24] rounded-xl p-4 text-center">
+                <p class="text-sm">Total User</p>
+                <p class="text-2xl font-bold">100</p>
+                <p class="text-green-500 text-xs">+10%</p>
+                <p class="text-sm text-right mt-1 text-[#6d2932]">View More</p>
+            </div>
+            </div>
+        </div>
+    </main>
+
+
+    
+    <script src="{% static 'js/sidebar.js' %}"></script>
+</body>
+</html>

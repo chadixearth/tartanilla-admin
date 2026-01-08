@@ -1,0 +1,264 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Route Management - TarTrack{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    .map-container { height: 600px; width: 100%; }
+    #map { height: 100%; width: 100%; }
+    .controls { position: absolute; top: 10px; left: 10px; background: white; padding: 15px; border-radius: 5px; z-index: 1000; }
+    .btn { padding: 8px 16px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
+    .btn-primary { background: #007bff; color: white; }
+    .btn-success { background: #28a745; color: white; }
+    .btn-danger { background: #dc3545; color: white; }
+    .form-group { margin: 10px 0; }
+    .form-control { width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 3px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ml-[280px] p-6">
+    <h1 class="text-2xl font-bold mb-4">Route Management</h1>
+    
+    <div class="map-container bg-white rounded-lg shadow-lg relative">
+        <div id="map"></div>
+        
+        <div class="controls">
+            <h3>Map Tools</h3>
+            <button class="btn btn-primary" onclick="addPoint()">Add Point</button>
+            <button class="btn btn-primary" onclick="addRoad()">Add Road</button>
+            <button class="btn btn-success" onclick="saveData()">Save</button>
+            <button class="btn btn-danger" onclick="clearMap()">Clear</button>
+            
+            <div id="pointForm" style="display:none;">
+                <div class="form-group">
+                    <label>Point Name:</label>
+                    <input type="text" id="pointName" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Type:</label>
+                    <select id="pointType" class="form-control">
+                        <option value="pickup">Pickup Point</option>
+                        <option value="dropoff">Drop-off Point</option>
+                        <option value="tourist_spot">Tourist Spot</option>
+                    </select>
+                </div>
+                <button class="btn btn-success" onclick="savePoint()">Save Point</button>
+            </div>
+            
+            <div id="roadForm" style="display:none;">
+                <div class="form-group">
+                    <label>Road Name:</label>
+                    <input type="text" id="roadName" class="form-control">
+                </div>
+                <button class="btn btn-success" onclick="saveRoad()">Save Road</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+let map;
+let currentMarker = null;
+let currentPolyline = null;
+let mode = null;
+
+// Initialize map
+function initMap() {
+    map = L.map('map').setView([10.3157, 123.8854], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    loadExistingData();
+}
+
+function addPoint() {
+    mode = 'point';
+    document.getElementById('pointForm').style.display = 'block';
+    document.getElementById('roadForm').style.display = 'none';
+    
+    map.on('click', function(e) {
+        if (currentMarker) map.removeLayer(currentMarker);
+        currentMarker = L.marker(e.latlng).addTo(map);
+        map.off('click');
+    });
+}
+
+function addRoad() {
+    mode = 'road';
+    document.getElementById('roadForm').style.display = 'block';
+    document.getElementById('pointForm').style.display = 'none';
+    
+    let points = [];
+    map.on('click', function(e) {
+        points.push(e.latlng);
+        if (currentPolyline) map.removeLayer(currentPolyline);
+        currentPolyline = L.polyline(points, {color: 'red'}).addTo(map);
+    });
+    
+    map.on('dblclick', function() {
+        map.off('click');
+        map.off('dblclick');
+    });
+}
+
+function savePoint() {
+    if (!currentMarker) {
+        alert('Please place a point first');
+        return;
+    }
+    
+    const name = document.getElementById('pointName').value;
+    const type = document.getElementById('pointType').value;
+    
+    if (!name) {
+        alert('Please enter a point name');
+        return;
+    }
+    
+    const data = {
+        name: name,
+        point_type: type,
+        latitude: currentMarker.getLatLng().lat,
+        longitude: currentMarker.getLatLng().lng,
+        icon_color: '#FF0000',
+        description: ''
+    };
+    
+    fetch('/routemanagement/save_point/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('Point saved successfully!');
+            clearForms();
+            loadExistingData();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error saving point');
+    });
+}
+
+function saveRoad() {
+    if (!currentPolyline) {
+        alert('Please draw a road first');
+        return;
+    }
+    
+    const name = document.getElementById('roadName').value;
+    if (!name) {
+        alert('Please enter a road name');
+        return;
+    }
+    
+    const coordinates = currentPolyline.getLatLngs().map(point => ({
+        lat: point.lat,
+        lng: point.lng
+    }));
+    
+    const data = {
+        name: name,
+        highlight_type: 'available',
+        stroke_color: '#FF0000',
+        stroke_width: 3,
+        description: '',
+        road_coordinates: coordinates
+    };
+    
+    fetch('/routemanagement/save_road/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('Road saved successfully!');
+            clearForms();
+            loadExistingData();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error saving road');
+    });
+}
+
+function clearMap() {
+    if (currentMarker) map.removeLayer(currentMarker);
+    if (currentPolyline) map.removeLayer(currentPolyline);
+    clearForms();
+}
+
+function clearForms() {
+    document.getElementById('pointForm').style.display = 'none';
+    document.getElementById('roadForm').style.display = 'none';
+    document.getElementById('pointName').value = '';
+    document.getElementById('roadName').value = '';
+    currentMarker = null;
+    currentPolyline = null;
+}
+
+function loadExistingData() {
+    fetch('/routemanagement/get_items/')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Clear existing layers
+            map.eachLayer(layer => {
+                if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+                    map.removeLayer(layer);
+                }
+            });
+            
+            // Add points
+            if (data.points) {
+                data.points.forEach(point => {
+                    const marker = L.marker([point.latitude, point.longitude]).addTo(map);
+                    marker.bindPopup(`<b>${point.name}</b><br>Type: ${point.point_type}`);
+                });
+            }
+            
+            // Add roads
+            if (data.roads) {
+                data.roads.forEach(road => {
+                    if (road.road_coordinates && road.road_coordinates.length > 0) {
+                        const coords = road.road_coordinates.map(coord => [coord.lat, coord.lng]);
+                        const polyline = L.polyline(coords, {color: road.stroke_color || 'red'}).addTo(map);
+                        polyline.bindPopup(`<b>${road.name}</b>`);
+                    }
+                });
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error loading data:', error);
+    });
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initMap();
+});
+</script>
+
+{% csrf_token %}
+{% endblock %}

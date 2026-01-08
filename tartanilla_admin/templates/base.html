@@ -1,0 +1,62 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dashboard - TarTrack{% endblock %}</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Poppins', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary-dark': '#531B24',
+                        'primary-medium': '#6A2931',
+                        'accent-light': '#c7b7a3',
+                        'accent-lightest': '#e8d8c4',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Custom CSS with version number -->
+    <link rel="stylesheet" href="{% static 'css/sidebar.css' %}?v=1.2">
+    
+    <!-- Additional CSS -->
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-[#F5F5F5] font-sans">
+    <!-- Logout Button (top right) -->
+    <form method="post" action="{% url 'accounts:logout' %}" style="position: fixed; top: 1rem; right: 1rem; z-index: 1000;">
+        {% csrf_token %}
+        <button type="submit" class="px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded shadow transition-colors duration-150">
+            Logout
+        </button>
+    </form>
+    <!-- Include Sidebar -->
+    {% include 'includes/sidebar.html' %}
+
+    <!-- Main Content Area -->
+    <!-- <div class="ml-[280px] p-6 transition-all duration-300"> -->
+        {% block content %}
+        <!-- Child templates will override this block -->
+        {% endblock %}
+    <!-- </div> -->
+
+    <!-- JavaScript Files with version number -->
+    <!-- <script src="{% static 'js/sidebar.js' %}?v=1.2"></script> -->
+    
+    <!-- Additional JavaScript -->
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

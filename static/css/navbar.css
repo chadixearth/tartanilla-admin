@@ -1,0 +1,52 @@
+.navbar {
+    background: linear-gradient(90deg, #561c24 0%, #6d2932 100%);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(199, 183, 163, 0.2);
+}
+
+.navbar-brand {
+    transition: transform 0.2s ease;
+}
+
+.navbar-brand:hover {
+    transform: scale(1.05);
+}
+
+.notification-badge {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.dropdown-menu {
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(199, 183, 163, 0.3);
+}
+
+.user-dropdown-enter {
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.2s ease;
+}
+
+.user-dropdown-enter-active {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+    .navbar-content {
+        padding: 0.75rem 1rem;
+    }
+}

@@ -1,0 +1,747 @@
+{% load static %}
+<!DOCTYPE html> 
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard - TarTrack</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="{% static 'css/sidebar.css' %}" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'primary-dark': '#561c24',
+            'primary-medium': '#6d2932',
+            'accent-light': '#c7b7a3',
+            'accent-lightest': '#e8d8c4',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="p-0 md:p-4 ml-5 bg-[#F5F5F5]">
+  {% include 'base.html' %}
+
+  <!-- Mobile Menu Button -->
+  <button onclick="toggleMobileSidebar()" class="md:hidden fixed top-4 left-4 z-50 bg-[#531B24] text-white p-3 rounded-lg shadow-lg">
+    <i class="fas fa-bars"></i>
+  </button>
+
+  <main class="md:ml-64 min-h-screen bg-[#f5f5f5] text-[#561c24] font-sans">
+    <div class="max-w-7xl mx-auto space-y-6 p-5">
+
+      <!-- Header -->
+      <div class="flex justify-between items-center border border-[#561c24] rounded-lg h-20 px-4">
+        <h1 class="text-3xl font-bold">Dashboard</h1>
+      </div>
+
+      <!-- ===================== KPIs (3 columns) ===================== -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <!-- KPI 1 -->
+        <div class="bg-white border border-[#561c24] rounded-xl p-4 text-center">
+          <p class="text-sm">Total Rides</p>
+          <p id="kpi-total-rides" class="text-2xl font-bold">0</p>
+          <p class="text-gray-500 text-xs">Completed bookings</p>
+        </div>
+
+        <!-- KPI 2 -->
+        <div class="bg-white border border-[#561c24] rounded-xl p-4 text-center">
+          <p class="text-sm">Active Cocheros</p>
+          <p id="kpi-active-drivers" class="text-2xl font-bold">0</p>
+          <p class="text-gray-500 text-xs">Currently available</p>
+        </div>
+
+
+        <div class="bg-white border border-[#561c24] rounded-xl p-4">
+          <p class="text-sm text-gray-500">Top Earner</p>
+          <p id="highlight-top-earner-name" class="text-lg font-bold text-[#6d2932]">—</p>
+          <p id="highlight-top-earner-amt" class="text-xs text-gray-400">—</p>
+        </div>
+
+        <div class="bg-white border border-[#561c24] rounded-xl p-4">
+          <p class="text-sm text-gray-500">Highest Rated Cochero</p>
+          <p id="highlight-highest-rated-name" class="text-lg font-bold text-[#6d2932]">—</p>
+          <p id="highlight-highest-rated-meta" class="text-xs text-gray-400">—</p>
+        </div>
+
+        <!-- KPI 3 -->
+        <!-- <div id="kpi-rating-card" class="bg-white border border-[#561c24] rounded-xl p-4 text-center">
+          <p class="text-sm">Avg Rating</p>
+          <p id="kpi-avg-rating" class="text-2xl font-bold">—</p>
+          <p class="text-gray-500 text-xs">n/a</p>
+        </div> -->
+      </div>
+
+      <!-- ===================== TEMP HIDE Revenue Trend =====================
+      <div class="lg:col-start-2 lg:col-span-2 lg:row-start-1 lg:row-span-3 bg-white border border-[#561c24] rounded-xl p-6 flex flex-col h-full">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold mb-3">Revenue Trend</h2>
+          <span class="text-xs text-gray-500">monthly totals from completed bookings</span>
+        </div>
+        <div class="relative flex-1 h-full">
+          <canvas id="revenueChart"></canvas>
+        </div>
+      </div>
+      ===================================================================== -->
+
+      <!-- Revenue Insights (others) -->
+      <div class="grid md:grid-cols-2 gap-6">
+        <!-- Revenue by Package (shorter) -->
+        <div class="bg-white border border-[#561c24] rounded-xl p-6">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-semibold mb-3">Revenue by Package</h2>
+
+            <div class="relative">
+              <button id="rbp-period-btn"
+                class="text-sm px-3 py-1.5 border rounded-md border-[#561c24]/40 hover:bg-[#561c24]/5 flex items-center gap-2">
+                <span id="rbp-period-label">Weekly</span>
+                <svg width="14" height="14" viewBox="0 0 24 24"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
+              </button>
+              <div id="rbp-menu"
+                   class="absolute right-0 mt-1 w-36 bg-white border border-[#561c24]/30 rounded-lg shadow z-10 hidden">
+                <button data-period="daily"   class="w-full text-left px-3 py-2 hover:bg-[#561c24]/5">Daily</button>
+                <button data-period="weekly"  class="w-full text-left px-3 py-2 hover:bg-[#561c24]/5">Weekly</button>
+                <button data-period="monthly" class="w-full text-left px-3 py-2 hover:bg-[#561c24]/5">Monthly</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="relative h-56 md:h-60 lg:h-64">
+            <canvas id="revenueByPackage" class="!w-full !h-full"></canvas>
+          </div>
+          <p id="rbp-empty-note" class="text-xs text-gray-500 mt-2 hidden">No completed bookings in this period.</p>
+        </div>
+
+        <!-- Tour Package Ratings (shorter) -->
+        <div class="bg-white border border-[#561c24] rounded-xl p-6">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-semibold mb-3">Tour Package Ratings</h2>
+            <span class="text-xs text-gray-500">share of reviews by package</span>
+          </div>
+          <div class="relative h-56 md:h-60 lg:h-64">
+            <canvas id="packageRatingsPie" class="!w-full !h-full"></canvas>
+          </div>
+          <p id="packageRatingsPieNote" class="text-xs text-gray-500 mt-2 hidden">No ratings yet.</p>
+        </div>
+      </div>
+
+      <!-- Driver Performance Metrics -->
+      <div class="bg-white border border-[#561c24] rounded-xl p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold">Cochero Performance Metrics</h2>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+            <thead class="bg-[#c7b7a3] text-[#561c24]">
+              <tr>
+                <th class="px-4 py-2 text-left">Name</th>
+                <th class="px-4 py-2">Rides</th>
+                <th class="px-4 py-2">Earnings (₱)</th>
+                <th class="px-4 py-2">Rating</th>
+                <th class="px-4 py-2">Acceptance</th>
+                <th class="px-4 py-2">Cancellations</th>
+              </tr>
+            </thead>
+            <tbody id="driver-performance-tbody">
+              <tr><td class="px-4 py-3 text-center text-gray-500" colspan="6">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-6 mt-6">
+          <div class="bg-[#f5f5f5] rounded-lg p-4 border">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-md font-semibold">Top Cochero by Earnings</h3>
+              <span class="text-xs text-gray-500">Weekly Top (last 7 days)</span>
+            </div>
+            <div class="relative h-64">
+              <canvas id="earningsChart" class="!w-full !h-full"></canvas>
+            </div>
+          </div>
+
+          <div class="bg-[#f5f5f5] rounded-lg p-4 border max-h-[350px]">
+            <h3 class="text-md font-semibold ">Cochero Ratings Distribution</h3>
+            <div class="w-full max-h-[350px]">
+              <canvas id="ratingChart"></canvas>
+            </div>
+            <p id="ratings-empty-note" class="text-xs text-gray-500 mt-2 hidden">No ratings data available.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Highlights -->
+      <!-- <div class="grid md:grid-cols-2 gap-6">
+        <div class="bg-white border border-[#561c24] rounded-xl p-4">
+          <p class="text-sm text-gray-500">Top Earner</p>
+          <p id="highlight-top-earner-name" class="text-lg font-bold text-[#6d2932]">—</p>
+          <p id="highlight-top-earner-amt" class="text-xs text-gray-400">—</p>
+        </div>
+        <div class="bg-white border border-[#561c24] rounded-xl p-4">
+          <p class="text-sm text-gray-500">Highest Rated Driver</p>
+          <p id="highlight-highest-rated-name" class="text-lg font-bold text-[#6d2932]">—</p>
+          <p id="highlight-highest-rated-meta" class="text-xs text-gray-400">—</p>
+        </div>
+        <div class="bg-transparent rounded-xl p-4"></div>
+      </div> -->
+
+    </div>
+  </main>
+
+  <script src="{% static 'js/sidebar.js' %}"></script>
+
+  <script>
+    const peso = (v) => '₱' + Number(v || 0).toLocaleString();
+    const escapeHTML = (s='') => s.toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+    // ---------- KPIs / Metrics ----------
+    async function loadDashboardMetrics() {
+      const url = "{% url 'accounts:dashboard_metrics_api' %}";
+      const res = await fetch(url, { credentials: 'include' });
+      const json = await res.json();
+      console.log('DEBUG: Dashboard metrics API response:', json);
+      if (!json.success) throw new Error(json.error || 'metrics failed');
+
+      const {
+        completed_bookings,
+        weekly_top_drivers,
+        ratings_distribution,
+        highest_rated_driver
+      } = json.data || {};
+      
+      document.getElementById('kpi-total-rides').textContent = Number(completed_bookings || 0).toLocaleString();
+
+      // Weekly top drivers chart
+      const earningsCtx = document.getElementById('earningsChart');
+      const topNames = (weekly_top_drivers || []).map(d => d.name);
+      const topAmts  = (weekly_top_drivers || []).map(d => d.amount);
+      new Chart(earningsCtx, {
+        type: 'bar',
+        data: {
+          labels: topNames,
+          datasets: [{
+            label: 'Weekly Earnings (₱)',
+            data: topAmts,
+            backgroundColor: 'rgba(109,41,50,0.2)',
+            borderColor:  '#6d2932',
+            borderWidth: 2,
+            borderRadius: 8,
+            maxBarThickness: 48
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: true, position: 'top' },
+            tooltip: { callbacks: { label: ctx => `₱${(ctx.parsed.y ?? 0).toLocaleString()}` } }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { autoSkip: false, maxRotation: 0, minRotation: 0 } },
+            y: { beginAtZero: true, ticks: { callback: v => '₱' + Number(v).toLocaleString() } }
+          },
+          layout: { padding: { right: 4, left: 4 } }
+        }
+      });
+
+      // Ratings distribution pie (overall)
+      const ratingCounts = (ratings_distribution && ratings_distribution.counts) || [0,0,0,0,0];
+      const ratingLabels = (ratings_distribution && ratings_distribution.labels) || ['5★','4★','3★','2★','1★'];
+      const ratingGroups = (ratings_distribution && ratings_distribution.groups) || [];
+      const totalRatings = ratingCounts.reduce((a,b)=>a+b,0);
+      const ratingNote = document.getElementById('ratings-empty-note');
+
+      if (totalRatings === 0) {
+        document.getElementById('ratingChart').classList.add('hidden');
+        ratingNote.classList.remove('hidden');
+      } else {
+        document.getElementById('ratingChart').classList.remove('hidden');
+        ratingNote.classList.add('hidden');
+        
+        const driversAtIndex = (idx) => {
+          if (!ratingGroups || idx >= ratingGroups.length) return [];
+          const g = ratingGroups[idx];
+          return Array.isArray(g?.drivers) ? g.drivers : [];
+        };
+        
+        new Chart(document.getElementById('ratingChart'), {
+          type: 'pie',
+          data: {
+            labels: ratingLabels,
+            datasets: [{
+              data: ratingCounts,
+              backgroundColor: ['#EAC7B6', '#D67065', '#BD4B50', '#A65A58', '#ff7b7b'],
+              borderColor: '#ffffff',
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'right',
+                align: 'center',
+                labels: { usePointStyle: true, boxWidth: 10 }
+              },
+              tooltip: {
+                callbacks: {
+                  title: (items) => items?.[0]?.label || '',
+                  label: (ctx) => {
+                    const val = ctx.parsed ?? 0;
+                    const pct = ((val / totalRatings) * 100).toFixed(1);
+                    return `${val} reviews (${pct}%)`;
+                  },
+                  afterBody: (items) => {
+                    const idx = items?.[0]?.dataIndex ?? 0;
+                    const drivers = driversAtIndex(idx);
+                    if (!drivers.length) return ['No drivers in this rating'];
+                    const shown = drivers.slice(0, 8).map(n => `• ${n}`);
+                    const more = drivers.length - 8;
+                    if (more > 0) shown.push(`… +${more} more`);
+                    return shown;
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // Top earner highlight
+      if ((weekly_top_drivers || []).length) {
+        const top = weekly_top_drivers[0];
+        document.getElementById('highlight-top-earner-name').textContent = top.name || '—';
+        document.getElementById('highlight-top-earner-amt').textContent = peso(top.amount || 0) + ' this week';
+      }
+
+      // Highest rated driver highlight
+      const hr = highest_rated_driver || null;
+      console.log('DEBUG: highest_rated_driver data:', hr);
+      if (hr && (hr.rating_count || 0) > 0) {
+        console.log('DEBUG: hr.name =', hr.name, 'type:', typeof hr.name);
+        document.getElementById('highlight-highest-rated-name').textContent = hr.name || '—';
+        document.getElementById('highlight-highest-rated-meta').textContent =
+          `${Number(hr.avg_rating || 0).toFixed(2)} ★ (${hr.rating_count})`;
+      } else {
+        document.getElementById('highlight-highest-rated-name').textContent = '—';
+        document.getElementById('highlight-highest-rated-meta').textContent = 'No ratings yet';
+      }
+    }
+
+    // ---------- Active Drivers ----------
+    async function loadActiveDrivers() {
+      const url = "{% url 'accounts:active_drivers_count_api' %}";
+      const el = document.getElementById('kpi-active-drivers');
+      try {
+        const res = await fetch(url, { credentials: 'include' });
+        const json = await res.json();
+        const count = (json && json.success && json.data && Number.isFinite(json.data.count))
+          ? json.data.count
+          : 0;
+        el.textContent = Number(count).toLocaleString();
+      } catch (e) {
+        console.error('active drivers count failed:', e);
+        el.textContent = '0';
+      }
+    }
+
+
+    // ---------- Driver Performance ----------
+    async function loadDriverPerformance() {
+      const tbody = document.getElementById('driver-performance-tbody');
+      const url = "{% url 'accounts:driver_performance_api' %}?limit=100";
+      try {
+        const res = await fetch(url, { credentials: 'include' });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error || 'driver performance failed');
+
+        const rows = json.data || [];
+        if (!rows.length) {
+          tbody.innerHTML = '<tr><td class="px-4 py-3 text-center text-gray-500" colspan="6">No released payouts yet.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = rows.map(r => {
+          const acc = (r.acceptance_pct ?? 0).toFixed(1) + '%';
+          const canc = `D: ${(r.driver_cancel_pct ?? 0).toFixed(1)}% • C: ${(r.customer_cancel_pct ?? 0).toFixed(1)}%`;
+          const ratingCell = (r.rating_count && r.rating_count > 0)
+            ? `${Number(r.avg_rating || 0).toFixed(2)} ★ (${r.rating_count})`
+            : '—';
+          return `
+            <tr class="border-t">
+              <td class="px-4 py-2">${escapeHTML(r.driver_name || '—')}</td>
+              <td class="px-4 py-2 text-center">${(r.completed_rides ?? 0).toLocaleString()}</td>
+              <td class="px-4 py-2 text-center">${peso(r.earnings)}</td>
+              <td class="px-4 py-2 text-center">${ratingCell}</td>
+              <td class="px-4 py-2 text-center">${acc}</td>
+              <td class="px-4 py-2 text-center">${canc}</td>
+            </tr>
+          `;
+        }).join('');
+      } catch (e) {
+        console.error(e);
+        tbody.innerHTML = '<tr><td class="px-4 py-3 text-center text-red-600" colspan="6">Failed to load driver performance.</td></tr>';
+      }
+    }
+
+    /* ===================== TEMP HIDE: Revenue Trend (Monthly) =====================
+    async function loadRevenueTrend(months = 6) {
+      const url = "{% url 'accounts:revenue_trend_api' %}" + `?months=${months}`;
+      const res = await fetch(url, { credentials: 'include' });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || 'revenue trend failed');
+
+      const { months: labels, amounts } = json.data || { months: [], amounts: [] };
+      const ctx = document.getElementById('revenueChart');
+      if (window._revenueChart) window._revenueChart.destroy();
+
+      window._revenueChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Revenue (₱)',
+            data: amounts,
+            borderColor: '#6d2932',
+            backgroundColor: 'rgba(109,41,50,0.2)',
+            tension: 0.3,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            tooltip: { callbacks: { label: (c) => `₱${Number(c.parsed.y || 0).toLocaleString()}` } },
+            legend: { position: 'top' }
+          },
+          scales: {
+            y: { beginAtZero: true, ticks: { callback: (v) => '₱' + Number(v).toLocaleString() } }
+          }
+        }
+      });
+    }
+    ============================================================================ */
+
+    /* ===================== Revenue by Package (Daily / Weekly / Monthly) ===================== */
+    let _rbpChart;
+    let _rbpCurrent = 'weekly'; // default
+
+    function rbpGradient(ctx, canvas){
+      const g = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      g.addColorStop(0.00, '#6d2932');
+      g.addColorStop(0.55, '#b54b56');
+      g.addColorStop(1.00, '#f3c4c9');
+      return g;
+    }
+
+    async function loadRevenueByPackage(period = 'weekly') {
+      _rbpCurrent = period;
+      const labelEl = document.getElementById('rbp-period-label');
+      labelEl.textContent = period[0].toUpperCase() + period.slice(1);
+
+      const canvas = document.getElementById('revenueByPackage');
+      const note   = document.getElementById('rbp-empty-note');
+
+      try {
+        let resp, json;
+
+        if (period === 'weekly') {
+          resp = await fetch("{% url 'accounts:revenue_by_package_api' %}" + "?granularity=weekly&weeks=1", { credentials: 'include' });
+          json = await resp.json();
+          if (!json.success) throw new Error(json.error || 'weekly failed');
+
+          const { weeks = [], datasets = [] } = json.data || {};
+          const latestIdx = weeks.length - 1;
+          const weekStart = weeks[latestIdx];
+          const start = new Date(weekStart);
+          const end   = new Date(start); end.setDate(start.getDate() + 6);
+          const rangeLabel = `${start.toLocaleDateString()} – ${end.toLocaleDateString()}`;
+
+          const rows = datasets.map(ds => ({
+            name: ds.package_name || '(Unknown)',
+            value: Number(ds.data?.[latestIdx] || 0),
+          })).sort((a,b) => b.value - a.value);
+
+          return renderRbpBar(canvas, rows, {
+            titleForTooltip: (pkg) => pkg,
+            labelForTooltip: () => `Week: ${rangeLabel}`,
+          });
+        }
+
+        if (period === 'monthly') {
+          resp = await fetch("{% url 'accounts:revenue_by_package_monthly_api' %}" + "?months=6&top=50", { credentials: 'include' });
+          json = await resp.json();
+          if (!json.success) throw new Error(json.error || 'monthly failed');
+
+          const { months = [], datasets = [] } = json.data || {};
+          const lastIdx = months.length - 1;
+          const monthLabel = months[lastIdx] || '';
+
+          const rows = datasets.map(ds => ({
+            name: ds.package_name || '(Unknown)',
+            value: Number(ds.data?.[lastIdx] || 0),
+          })).sort((a,b) => b.value - a.value);
+
+          return renderRbpBar(canvas, rows, {
+            titleForTooltip: (pkg) => pkg,
+            labelForTooltip: () => `Month: ${monthLabel}`,
+          });
+        }
+
+        // DAILY (latest day)
+        resp = await fetch("{% url 'accounts:revenue_by_package_api' %}" + "?granularity=daily&days=1", { credentials: 'include' });
+        json = await resp.json();
+        if (!json.success) throw new Error(json.error || 'daily failed');
+
+        const { days = [], datasets = [] } = json.data || {};
+        const idx = days.length - 1;
+        const dayISO = days[idx];
+        const dateLabel = new Date(dayISO).toLocaleDateString();
+
+        const rows = datasets.map(ds => ({
+          name: ds.package_name || '(Unknown)',
+          value: Number(ds.data?.[idx] || 0),
+        })).sort((a,b) => b.value - a.value);
+
+        return renderRbpBar(canvas, rows, {
+          titleForTooltip: (pkg) => pkg,
+          labelForTooltip: () => `Date: ${dateLabel}`,
+        });
+
+      } catch (e) {
+        console.error(e);
+        if (_rbpChart) _rbpChart.destroy();
+        canvas.classList.add('hidden');
+        note.classList.remove('hidden');
+      }
+    }
+
+    function renderRbpBar(canvas, items, tooltipFmt){
+      const note = document.getElementById('rbp-empty-note');
+      if (!items.length) {
+        if (_rbpChart) _rbpChart.destroy();
+        canvas.classList.add('hidden');
+        note.classList.remove('hidden');
+        return;
+      }
+      canvas.classList.remove('hidden');
+      note.classList.add('hidden');
+
+      const labels = items.map(i => i.name);
+      const values = items.map(i => i.value);
+
+      const ctx = canvas.getContext('2d');
+      const grad = rbpGradient(ctx, canvas);
+
+      if (_rbpChart) _rbpChart.destroy();
+      _rbpChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            data: values,
+            backgroundColor: grad,
+            borderColor:  'rgba(109,41,50,0.2)',
+            borderWidth: 1,
+            borderRadius: 10,
+            maxBarThickness: 48
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items) => tooltipFmt.titleForTooltip(items[0]?.label || ''),
+                label: (ctx) => peso(ctx.parsed.y || 0),
+                afterLabel: () => tooltipFmt.labelForTooltip()
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { autoSkip: false, maxRotation: 0, minRotation: 0 } },
+            y: { beginAtZero: true, ticks: { callback: v => '₱' + Number(v).toLocaleString() } }
+          }
+        }
+      });
+    }
+
+    // ---------- Tour Package Ratings (pie) ----------
+    async function loadPackageRatingsPie() {
+    const canvas = document.getElementById('packageRatingsPie');
+    const note = document.getElementById('packageRatingsPieNote');
+
+    try {
+      const res = await fetch("{% url 'accounts:package_ratings_pie_api' %}", { credentials: 'include' });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || 'package ratings failed');
+
+      const groups = (json.data && Array.isArray(json.data.groups)) ? json.data.groups : null;
+
+      // Legend should be star labels
+      const labels = groups ? groups.map(g => g.label) : ((json.data && json.data.labels) || []);
+      const counts = groups ? groups.map(g => g.count) : ((json.data && json.data.counts) || []);
+      const total = (counts || []).reduce((a,b)=>a+b,0);
+
+      if (!labels.length || total === 0) {
+        canvas.classList.add('hidden');
+        note.classList.remove('hidden');
+        return;
+      }
+
+      // For tooltip package listing
+      const packagesAtIndex = (idx) => {
+        if (!groups) return [];
+        const g = groups[idx];
+        return Array.isArray(g?.packages) ? g.packages : [];
+      };
+
+      new Chart(canvas, {
+        type: 'pie',
+        data: {
+          labels,               // <-- legend shows 5★, 4★, ...
+          datasets: [{
+            data: counts,
+            backgroundColor: ['#EAC7B6', '#D67065', '#BD4B50', '#A65A58', '#ff7b7b'],
+            borderColor: '#ffffff',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 10, textAlign: 'left' } },
+            tooltip: {
+              callbacks: {
+                title: (items) => items?.[0]?.label || '',                     // e.g. "5★"
+                label: (ctx) => {
+                  const val = ctx.parsed ?? 0;
+                  const pct = ((val / total) * 100).toFixed(1);
+                  return `${val} reviews (${pct}%)`;
+                },
+                afterBody: (items) => {
+                  const idx = items?.[0]?.dataIndex ?? 0;
+                  const pkgs = packagesAtIndex(idx);
+                  if (!pkgs.length) return ['No packages in this bucket'];
+                  // Show up to 8, then "+N more"
+                  const shown = pkgs.slice(0, 8).map(n => `• ${n}`);
+                  const more = pkgs.length - 8;
+                  if (more > 0) shown.push(`… +${more} more`);
+                  return shown;
+                }
+              }
+            }
+          }
+        }
+      });
+    } catch (e) {
+      console.error(e);
+      canvas.classList.add('hidden');
+      note.classList.remove('hidden');
+      note.textContent = 'Failed to load package ratings.';
+    }
+  }
+
+    // async function loadPackageRatingsPie() {
+    //   const canvas = document.getElementById('packageRatingsPie');
+    //   const note = document.getElementById('packageRatingsPieNote');
+
+    //   try {
+    //     const res = await fetch("{% url 'accounts:package_ratings_pie_api' %}", { credentials: 'include' });
+    //     const json = await res.json();
+    //     if (!json.success) throw new Error(json.error || 'package ratings failed');
+
+    //     const packs = (json.data && Array.isArray(json.data.packages)) ? json.data.packages : null;
+
+    //     // ✅ Use package names, not IDs
+    //     const labels = packs ? packs.map(p => p.name) : ((json.data && json.data.labels) || []);
+    //     const counts = packs ? packs.map(p => p.count) : ((json.data && json.data.counts) || []);
+    //     const total = counts.reduce((a,b)=>a+b,0);
+
+    //     if (!labels.length || total === 0) {
+    //       canvas.classList.add('hidden');
+    //       note.classList.remove('hidden');
+    //       return;
+    //     }
+
+    //     new Chart(canvas, {
+    //       type: 'pie',
+    //       data: {
+    //         labels, // legend shows names
+    //         datasets: [{
+    //           data: counts,
+    //           backgroundColor: ['#EAC7B6', '#D67065', '#BD4B50', '#A65A58', '#ff7b7b', '#c7b7a3', '#6d2932', '#561c24'],
+    //           borderColor: '#ffffff',
+    //           borderWidth: 2
+    //         }]
+    //       },
+    //       options: {
+    //         responsive: true,
+    //         maintainAspectRatio: false,
+    //         plugins: {
+    //           legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 10, textAlign: 'left' } },
+    //           tooltip: {
+    //             callbacks: {
+    //               title: (items) => items?.[0]?.label || '', // <- name on hover
+    //               label: (ctx) => {
+    //                 const val = ctx.parsed ?? 0;
+    //                 const pct = ((val / total) * 100).toFixed(1);
+    //                 return `${val} (${pct}%)`;
+    //               }
+    //             }
+    //           }
+    //         }
+    //       }
+    //     });
+    //   } catch (e) {
+    //     console.error(e);
+    //     canvas.classList.add('hidden');
+    //     note.classList.remove('hidden');
+    //     note.textContent = 'Failed to load package ratings.';
+    //   }
+    // }
+
+    // Dropdown wiring
+    (function wireRbpMenu(){
+      const btn  = document.getElementById('rbp-period-btn');
+      const menu = document.getElementById('rbp-menu');
+      btn.addEventListener('click', () => menu.classList.toggle('hidden'));
+      menu.querySelectorAll('button[data-period]').forEach(el => {
+        el.addEventListener('click', () => {
+          menu.classList.add('hidden');
+          const p = el.getAttribute('data-period');
+          loadRevenueByPackage(p);
+        });
+      });
+      document.addEventListener('click', (e)=>{
+        if (!btn.contains(e.target) && !menu.contains(e.target)) menu.classList.add('hidden');
+      });
+    })();
+
+    // ---------- init ----------
+    (async function init() {
+      try {
+        await Promise.all([
+          // loadRevenueTrend(6), // TEMP HIDDEN
+          loadDashboardMetrics(),
+          loadActiveDrivers(),
+          loadDriverPerformance(),
+          loadRevenueByPackage('weekly'),
+          loadPackageRatingsPie()
+        ]);
+      } catch (e) {
+        console.error('Init error:', e);
+      }
+    })();
+  </script>
+</body>
+</html>

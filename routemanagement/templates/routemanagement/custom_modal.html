@@ -1,0 +1,236 @@
+<!-- Custom Modal Styles and Structure -->
+<style>
+.custom-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: fadeIn 0.2s ease;
+}
+
+.custom-modal {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    max-width: 400px;
+    width: 90%;
+    animation: slideUp 0.3s ease;
+}
+
+.custom-modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.custom-modal-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #531B24;
+    margin: 0;
+}
+
+.custom-modal-body {
+    padding: 24px;
+    color: #333;
+    line-height: 1.6;
+}
+
+.custom-modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e5e5e5;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.custom-modal-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.custom-modal-btn-primary {
+    background: #531B24;
+    color: white;
+}
+
+.custom-modal-btn-primary:hover {
+    background: #6A2931;
+}
+
+.custom-modal-btn-secondary {
+    background: #e5e5e5;
+    color: #333;
+}
+
+.custom-modal-btn-secondary:hover {
+    background: #d0d0d0;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+</style>
+
+<script>
+// Custom modal functions
+function showCustomModal(title, message, type = 'alert') {
+    // Remove any existing modals
+    const existingModal = document.querySelector('.custom-modal-overlay');
+    if (existingModal) existingModal.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'custom-modal-overlay';
+    
+    const modal = document.createElement('div');
+    modal.className = 'custom-modal';
+    
+    const icon = type === 'error' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️';
+    
+    modal.innerHTML = `
+        <div class="custom-modal-header">
+            <h3 class="custom-modal-title">${icon} ${title}</h3>
+        </div>
+        <div class="custom-modal-body">
+            ${message}
+        </div>
+        <div class="custom-modal-footer">
+            <button class="custom-modal-btn custom-modal-btn-primary" onclick="this.closest('.custom-modal-overlay').remove()">OK</button>
+        </div>
+    `;
+    
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    
+    // Close on overlay click
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) overlay.remove();
+    });
+    
+    // Close on ESC key
+    const escHandler = function(e) {
+        if (e.key === 'Escape') {
+            overlay.remove();
+            document.removeEventListener('keydown', escHandler);
+        }
+    };
+    document.addEventListener('keydown', escHandler);
+}
+
+function showCustomConfirm(title, message, onConfirm, onCancel) {
+    const existingModal = document.querySelector('.custom-modal-overlay');
+    if (existingModal) existingModal.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'custom-modal-overlay';
+    
+    const modal = document.createElement('div');
+    modal.className = 'custom-modal';
+    
+    modal.innerHTML = `
+        <div class="custom-modal-header">
+            <h3 class="custom-modal-title">❓ ${title}</h3>
+        </div>
+        <div class="custom-modal-body">
+            ${message}
+        </div>
+        <div class="custom-modal-footer">
+            <button class="custom-modal-btn custom-modal-btn-secondary" id="cancelBtn">Cancel</button>
+            <button class="custom-modal-btn custom-modal-btn-primary" id="confirmBtn">Confirm</button>
+        </div>
+    `;
+    
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    
+    modal.querySelector('#confirmBtn').onclick = function() {
+        overlay.remove();
+        if (onConfirm) onConfirm();
+    };
+    
+    modal.querySelector('#cancelBtn').onclick = function() {
+        overlay.remove();
+        if (onCancel) onCancel();
+    };
+    
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) {
+            overlay.remove();
+            if (onCancel) onCancel();
+        }
+    });
+}
+
+function showCustomPrompt(title, message, defaultValue, onConfirm, onCancel) {
+    const existingModal = document.querySelector('.custom-modal-overlay');
+    if (existingModal) existingModal.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'custom-modal-overlay';
+    
+    const modal = document.createElement('div');
+    modal.className = 'custom-modal';
+    
+    modal.innerHTML = `
+        <div class="custom-modal-header">
+            <h3 class="custom-modal-title">✏️ ${title}</h3>
+        </div>
+        <div class="custom-modal-body">
+            <p style="margin-bottom: 12px;">${message}</p>
+            <input type="text" id="promptInput" class="form-control" value="${defaultValue || ''}" style="width: 100%; padding: 10px; border: 1px solid #e5e5e5; border-radius: 6px;">
+        </div>
+        <div class="custom-modal-footer">
+            <button class="custom-modal-btn custom-modal-btn-secondary" id="cancelBtn">Cancel</button>
+            <button class="custom-modal-btn custom-modal-btn-primary" id="confirmBtn">OK</button>
+        </div>
+    `;
+    
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    
+    const input = modal.querySelector('#promptInput');
+    input.focus();
+    input.select();
+    
+    modal.querySelector('#confirmBtn').onclick = function() {
+        const value = input.value.trim();
+        overlay.remove();
+        if (onConfirm) onConfirm(value);
+    };
+    
+    modal.querySelector('#cancelBtn').onclick = function() {
+        overlay.remove();
+        if (onCancel) onCancel();
+    };
+    
+    input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            const value = input.value.trim();
+            overlay.remove();
+            if (onConfirm) onConfirm(value);
+        }
+    });
+    
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) {
+            overlay.remove();
+            if (onCancel) onCancel();
+        }
+    });
+}
+</script>

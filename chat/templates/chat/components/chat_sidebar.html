@@ -1,0 +1,26 @@
+{% load static %}
+<div class="w-1/3 bg-white border-r border-[#561c24] flex flex-col">
+    <!-- Filter Tabs -->
+    <div class="border-b border-gray-200 p-4">
+        <div class="flex space-x-4">
+            <button class="px-3 py-2 text-sm font-medium text-[#561c24] border-b-2 border-[#561c24] bg-[#accent-lightest] rounded-t-lg">
+                All Chats
+            </button>
+            <button class="px-3 py-2 text-sm font-medium text-gray-500 hover:text-[#561c24] rounded-t-lg">
+                Drivers
+            </button>
+            <button class="px-3 py-2 text-sm font-medium text-gray-500 hover:text-[#561c24] rounded-t-lg">
+                Owners
+            </button>
+            <button class="px-3 py-2 text-sm font-medium text-gray-500 hover:text-[#561c24] rounded-t-lg">
+                Tourists
+            </button>
+        </div>
+    </div>
+
+    <!-- Chat List -->
+    <div id="conversationsList" class="flex-1 overflow-y-auto">
+        <!-- Conversations will be rendered here via JavaScript -->
+        <div class="text-center py-8 text-gray-500">Loading conversations...</div>
+    </div>
+</div>

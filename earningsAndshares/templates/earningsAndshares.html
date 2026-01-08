@@ -1,0 +1,2191 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Earnings And Shares</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="{% static 'css/sidebar.css' %}" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'primary-dark': '#561c24',
+            'primary-medium': '#6d2932',
+            'accent-light': '#c7b7a3',
+            'accent-lightest': '#e8d8c4',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="p-0 md:p-4 ml-5 bg-[#F5F5F5]">
+  {% include 'base.html' %}
+
+  <main class="md:ml-64 min-h-screen bg-[#f5f5f5] text-[#561c24] font-sans">
+    <div class="max-w-7xl mx-auto space-y-6 p-5">
+
+      <!-- Header row with title (left) and export button (right) -->
+      <div class="flex justify-between items-center border border-[#561c24] rounded-lg h-20 px-4">
+        <h1 class="text-3xl font-bold">Earnings And Shares</h1>
+        
+
+
+        <!-- Period dropdown (kept but hidden in markup above) -->
+        <!--
+        <div class="flex items-center gap-2">
+          <label for="aggSelect" class="text-sm text-[#6d2932] hidden sm:block">View:</label>
+          <select
+            id="aggSelect"
+            class="text-sm rounded-md border border-[#561c24] px-2 py-2 bg-white text-[#561c24] focus:outline-none focus:ring-1 focus:ring-[#561c24]/40"
+          >
+            <option value="daily" selected>Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="yearly">Yearly</option>
+          </select>
+        </div>
+        -->
+      </div>
+
+      <!-- Top Section -->
+      <div class="flex flex-col lg:flex-row gap-6">
+        <!-- LEFT (only Org & Driver shares) -->
+        <div class="flex flex-col gap-6 w-full lg:w-48">
+          <div class="bg-white border border-[#561c24] rounded-xl p-3 h-full">
+            <div class="flex items-center justify-between mb-2 ml-3 mt-2">
+              <h2 class="text-sm font-semibold" id="orgShareTitle">Organization Total Shares ()</h2>
+              <button id="editPercentageBtn" class="text-xs text-[#561c24] hover:text-[#6d2932] p-1" title="Edit percentage">
+                <i class="bi bi-pencil"></i>
+              </button>
+            </div>
+            <p class="text-3xl font-extrabold leading-tigh ml-3">
+              ₱{{ organization_total_shares|floatformat:2 }}
+            </p>
+            <p class="text-xs text-gray-500 mt-2 ml-3">Derived from gross earnings</p>
+          </div>
+
+          <div class="bg-white border border-[#561c24] rounded-xl p-3 h-full">
+            <h2 class="text-sm font-semibold mb-2 ml-3 mt-2" id="driverShareTitle">Driver Total Shares ()</h2>
+            <p class="text-3xl font-extrabold leading-tight ml-3">
+              ₱{{ driver_total_shares|floatformat:2 }}
+            </p>
+            <p class="text-xs text-gray-500 mt-2 ml-3">Derived from gross earnings</p>
+          </div>
+        </div>
+
+        <!-- RIGHT (Hourly chart) -->
+        <div id="chartCard" class="flex-1 bg-white border border-[#561c24] rounded-xl p-6 h-full">
+          <div class="flex justify-between items-center mb-1">
+            <h2 class="text-lg font-semibold">Growth</h2>
+            <div class="flex items-center gap-2">
+              <p class="text-sm text-gray-600"><span id="chartPeriodLabel">Hourly income (today)</span></p>
+              <!-- Sales button to open Sales Report modal -->
+              <button
+                id="openSalesFromChartBtn"
+                class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#561c24] text-[#561c24] hover:bg-[#561c24] hover:text-white transition"
+                title="Open Earnings Report"
+              >
+                <i class="bi bi-cash-coin text-base"></i>
+                <span class="hidden sm:inline text-sm font-medium">Sales</span>
+              </button>
+            </div>
+          </div>
+          <!-- Peak hour banner (filled by JS) -->
+          <div id="peakHourBanner" class="text-sm text-[#561c24] mb-1 hidden"></div>
+
+          <div class="rounded-lg mt-2 h-64">
+            <canvas id="totalDailyChart"></canvas>
+          </div>
+        </div>
+
+        <!-- ===== Refunds sidebar (right of the chart) ===== -->
+        <aside id="refundAside" class="w-full lg:w-80 bg-white border border-[#561c24] rounded-xl p-6 h-full">
+          <div id="refundAsideHeader" class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-semibold">Refund Requests</h2>
+            <button
+              type="button"
+              id="refundViewAllBtn"
+              class="text-sm px-3 py-1 rounded-lg border border-[#561c24] text-[#561c24] hover:bg-[#561c24] hover:text-white">
+              View all
+            </button>
+          </div>
+
+          <!-- Height auto-syncs with chart card; this area fills remaining space -->
+          <div id="refundSidebarScroll" class="overflow-auto">
+            <table class="min-w-full table-auto text-sm">
+              <thead class="sticky top-0 z-10 text-left bg-[#f5f5f5] text-[#561c24]">
+                <tr>
+                  <th class="py-2 px-3">Ref #</th>
+                  <th class="py-2 px-3">Book ID</th>
+                  <th class="py-2 px-3">Reason</th>
+                  <th class="py-2 px-3">Status</th>
+                  <th class="py-2 px-3 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody id="refundSidebarTbody">
+              </tbody>
+            </table>
+          </div>
+        </aside>
+        <!-- ===== /Refunds sidebar ===== -->
+      </div>
+
+      <!-- Tabs + Tables -->
+      <div class="bg-white border border-[#561c24] rounded-xl mt-4 p-6">
+        <div class="flex space-x-4 mb-4">
+          <button id="pendingTab" class="py-2 px-4 font-medium text-white bg-[#561c24] rounded-lg" onclick="switchTab('pending')">Pending Payouts</button>
+          <button id="releasedTab" class="py-2 px-4 font-medium text-[#561c24] bg-transparent rounded-lg" onclick="switchTab('released')">Released Payouts</button>
+        </div>
+
+        <!-- Pending Payouts -->
+        <div id="pendingContent" class="overflow-x-auto">
+          <table class="min-w-full table-auto text-sm">
+            <thead class="text-left bg-[#f5f5f5] text-[#561c24]">
+              <tr>
+                <th class="py-2 px-4">Payout ID</th>
+                <th class="py-2 px-4">Cochero Name</th>
+                <th class="py-2 px-4">Status</th>
+                <th class="py-2 px-4">Amount</th>
+                <th class="py-2 px-4">Pay Period</th>
+                <th class="py-2 px-4">Action</th>
+              </tr>
+            </thead>
+            <tbody id="pendingTableBody">
+              {% if pending_payouts %}
+                {% for pending in pending_payouts %}
+                <tr class="border-t pending-row"
+                    data-payout-id="{{ pending.id }}"
+                    data-driver-id="{{ pending.driver_id }}"
+                    data-driver-name="{{ pending.driver_name }}"
+                    data-total-amount="{{ pending.total_amount }}">
+                  <td class="py-2 px-4">{{ pending.id }}</td>
+                  <td class="py-2 px-4">{{ pending.driver_name }}</td>
+                  <td class="py-2 px-4"><span class="text-blue-600 font-medium">{{ pending.status|capfirst }}</span></td>
+                  <td class="py-2 px-4">₱ {{ pending.total_amount|floatformat:2 }}</td>
+                  <td class="py-2 px-4">Daily</td>
+                  <td class="py-2 px-4">
+                    <button
+                      type="button"
+                      data-release-url="/api/earnings/{{ pending.id }}/release/"
+                      onclick="openConfirmModal('{{ pending.id }}','{{ pending.driver_name|escapejs }}','{{ pending.total_amount }}')"
+                      class="text-sm text-white bg-green-600 px-2 py-1 rounded">
+                      Release
+                    </button>
+                  </td>
+                </tr>
+                {% endfor %}
+                <tr id="pending-empty-row" class="hidden">
+                  <td colspan="6" class="text-center py-4">No pending payouts</td>
+                </tr>
+              {% else %}
+                <tr id="pending-empty-row">
+                  <td colspan="6" class="text-center py-4">No pending payouts</td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+          <div class="flex justify-between items-center mt-4">
+            <p id="pendingPageInfo" class="text-sm text-gray-600">Page 1 of 1</p>
+            <div class="flex gap-2">
+              <button id="pendingPrevBtn" class="px-3 py-1 rounded-lg border border-[#561c24] text-[#561c24] hover:bg-[#561c24] hover:text-white disabled:opacity-40" onclick="changePendingPage(-1)">Prev</button>
+              <button id="pendingNextBtn" class="px-3 py-1 rounded-lg border border-[#561c24] text-[#561c24] hover:bg-[#561c24] hover:text-white disabled:opacity-40" onclick="changePendingPage(1)">Next</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Released Payouts -->
+        <div id="releasedContent" class="hidden overflow-x-auto">
+          <table class="min-w-full table-auto text-sm">
+            <thead class="text-left bg-[#f5f5f5] text-[#561c24]">
+              <tr>
+                <th class="py-2 px-4">Payout ID</th>
+                <th class="py-2 px-4">Cochero Name</th>
+                <th class="py-2 px-4">Status</th>
+                <th class="py-2 px-4">Amount</th>
+                <th class="py-2 px-4">Released Date</th>
+                <th class="py-2 px-4">Action</th>
+              </tr>
+            </thead>
+            <tbody id="releasedTableBody">
+              {% if released_payouts %}
+                {% for payout in released_payouts %}
+                <tr class="border-t released-row" data-row="data">
+                  <td class="py-2 px-4">{{ payout.id }}</td>
+                  <td class="py-2 px-4">{{ payout.driver_name }}</td>
+                  <td class="py-2 px-4"><span class="text-green-600 font-medium">Released</span></td>
+                  <td class="py-2 px-4">₱ {{ payout.total_amount|floatformat:2 }}</td>
+                  <td class="py-2 px-4">
+                    <span class="released-date" data-iso="{{ payout.payout_date }}"></span>
+                  </td>
+                  <td class="py-2 px-4">
+                    <button
+                      type="button"
+                      onclick="fetchPayoutDetails('/api/earnings/{{ payout.id }}/')"
+                      class="text-[#561c24] hover:text-white hover:bg-[#561c24] px-2 py-1 rounded">
+                      <i class="fa-solid fa-file-lines text-lg"></i>
+                    </button>
+                  </td>
+                </tr>
+                {% endfor %}
+                <tr id="released-empty-row" class="hidden">
+                  <td colspan="6" class="text-center py-4">No released payouts</td>
+                </tr>
+              {% else %}
+                <tr id="released-empty-row">
+                  <td colspan="6" class="text-center py-4">No released payouts</td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+          <div class="flex justify-between items-center mt-4">
+            <p id="releasedPageInfo" class="text-sm text-gray-600">Page 1 of 1</p>
+            <div class="flex gap-2">
+              <button id="releasedPrevBtn" class="px-3 py-1 rounded-lg border border-[#561c24] text-[#561c24] hover:bg-[#561c24] hover:text-white disabled:opacity-40" onclick="changeReleasedPage(-1)">Prev</button>
+              <button id="releasedNextBtn" class="px-3 py-1 rounded-lg border border-[#561c24] text-[#561c24] hover:bg-[#561c24] hover:text-white disabled:opacity-40" onclick="changeReleasedPage(1)">Next</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Payslip Modal -->
+  <div id="payslipModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-50 flex justify-center items-center md:ml-64">
+    <div class="bg-white w-full max-w-lg mx-auto rounded-xl border border-[#561c24] shadow-lg text-[#561c24] font-sans p-8 relative z-50">
+      <div class="absolute top-4 right-4">
+        <button onclick="closeModal()" class="text-[#561c24] hover:text-red-600 text-2xl font-bold">&times;</button>
+      </div>
+
+      <div class="flex items-center justify-center gap-4 mb-4">
+        <img src="{% static 'img/Tartrack Logo_sakto.png' %}" alt="TarTrack Logo" class="w-28 h-14 object-contain" />
+        <div class="text-center">
+          <h2 class="text-2xl font-bold tracking-wide">Payout Receipt</h2>
+          <p class="text-sm text-gray-500">TarTrack Official Payslip Record</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 text-sm border-y border-dashed border-[#561c24] py-4">
+        <div><p class="font-semibold">Reference No:</p><p id="modalRef"></p></div>
+        <div><p class="font-semibold">Date Released:</p><p id="modalDate"></p></div>
+        <div><p class="font-semibold">Driver:</p><p id="modalName"></p></div>
+        <div><p class="font-semibold">Status:</p><p id="modalStatus" class="text-green-600 font-semibold"></p></div>
+        <div><p class="font-semibold">Amount:</p><p id="modalAmount" class="text-lg font-bold text-green-700"></p></div>
+        <div>
+          <p class="font-semibold">Remarks:</p>
+          <p id="modalRemarks"></p>
+        </div>
+      </div>
+
+      <div class="mt-6 text-center">
+        <p class="text-xs text-gray-500">This receipt confirms the release of your earnings. Please retain for your records.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Release Confirmation Modal (with Remarks input) -->
+  <div id="confirmModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-50 flex justify-center items-center md:ml-64">
+    <div class="bg-white w-full max-w-md mx-auto rounded-xl border border-[#561c24] shadow-lg text-[#561c24] font-sans p-6 relative">
+      <div class="absolute top-4 right-4">
+        <button onclick="closeConfirmModal()" class="text-[#561c24] hover:text-red-600 text-2xl font-bold">&times;</button>
+      </div>
+      <h2 class="text-xl font-bold mb-3">Confirm Payout Release</h2>
+      <p id="confirmMessage" class="mb-2 text-sm text-gray-700"></p>
+      <p id="confirmMeta" class="text-xs text-[#6d2932] mb-3"></p>
+
+      <label for="confirmRemarks" class="block text-sm font-medium mb-1">Remarks (optional)</label>
+      <textarea id="confirmRemarks" class="w-full border border-[#561c24]/40 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#561c24]/40" rows="3" placeholder="Add notes for this release (e.g., transferred via GCash)"></textarea>
+
+      <div class="flex justify-end gap-4 mt-5">
+        <button type="button" onclick="closeConfirmModal()" class="px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 text-gray-800">Cancel</button>
+        <button type="button" id="confirmBtn" class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Refunds Modal (modern) -->
+  <div id="refundModal" class="fixed inset-0 md:inset-y-0 md:left-64 md:right-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+    <div class="relative mx-auto w-full max-w-5xl xl:max-w-6xl p-4 flex items-center justify-center">
+      <div class="w-full bg-white rounded-2xl shadow-2xl border border-[#561c24]/20 overflow-hidden bg-[#f8f6f4] mt-12">
+        <div class="flex items-center justify-between px-6 py-4 ">
+          <div>
+            <h2 class="text-xl font-bold tracking-tight text-[#561c24]">Refund Requests</h2>
+            <p class="text-xs text-[#561c24]/70">Review and take action on recent refund submissions</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <!-- History button -->
+            <button title="View history" onclick="openRefundHistoryModal()"
+              class="inline-flex items-center justify-center w-9 h-9 rounded-full hover:bg-[#561c24]/10 transition">
+              <i class="bi bi-clock-history text-[#561c24] text-lg"></i>
+            </button>
+            <!-- Close -->
+            <button onclick="closeRefundModal()" class="inline-flex items-center justify-center w-9 h-9 rounded-full hover:bg-[#561c24]/10 transition">
+              <i class="bi bi-x-lg text-[#561c24] text-lg"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="px-6 pb-4">
+          <div class="overflow-x-auto rounded-xl">
+            <table class="min-w-full table-auto text-sm">
+              <thead class="bg-[#f5f5f5] text-[#561c24] text-left text-md">
+                <tr>
+                  <th class="py-2 px-4">Ref #</th>
+                  <th class="py-2 px-4">Booking</th>
+                  <th class="py-2 px-4">Cochero</th>
+                  <th class="py-2 px-4">Amount</th>
+                  <th class="py-2 px-4">Reason</th>
+                  <th class="py-2 px-4">Status</th>
+                  <th class="py-2 px-4">Requested</th>
+                  <th class="py-2 px-4 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody id="refundModalTbody">
+                <tr><td colspan="8" class="text-center py-8">
+                  <div class="flex flex-col items-center">
+                    <div class="animate-pulse mb-4">
+                      <img src="{% static 'img/TarTrack Logo_sakto.png' %}" alt="TarTrack" class="h-16 w-auto opacity-70">
+                    </div>
+                  </div>
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="flex items-center justify-between mt-4">
+            <p id="refundPageInfo" class="text-sm text-gray-600">Page 1 of 1</p>
+            <div class="flex gap-2">
+              <button id="refundPrevBtn" class="px-3 py-1 rounded-lg border border-[#561c24] text-[#561c24] hover:bg-[#561c24] hover:text-white disabled:opacity-40">Prev</button>
+              <button id="refundNextBtn" class="px-3 py-1 rounded-lg border border-[#561c24] text-[#561c24] hover:bg-[#561c24] hover:text-white disabled:opacity-40">Next</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Refund History Modal -->
+  <div id="refundHistoryModal" class="fixed inset-0 md:inset-y-0 md:left-64 md:right-0 z-[60] hidden">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+    <div class="relative mx-auto w-full max-w-6xl p-4 flex items-center justify-center">
+      <div class="w-full bg-white rounded-2xl shadow-2xl border border-[#561c24]/20 overflow-hidden bg-[#f8f6f4] mt-12">
+        <div class="flex items-center justify-between px-6 py-4">
+          <div>
+            <h2 class="text-xl font-bold tracking-tight text-[#561c24]">Refund History</h2>
+            <p class="text-xs text-[#561c24]/70">Approved and Rejected requests</p>
+          </div>
+          <button onclick="closeRefundHistoryModal()" class="inline-flex items-center justify-center w-9 h-9 rounded-full hover:bg-[#561c24]/10 transition" title="Close">
+            <i class="bi bi-x-lg text-[#561c24] text-lg"></i>
+          </button>
+        </div>
+
+        <div class="px-6 pb-4">
+          <div class="overflow-x-auto rounded-xl">
+            <table class="min-w-full table-auto text-sm">
+              <thead class="bg-[#f5f5f5] text-[#561c24] text-left text-md">
+                <tr>
+                  <th class="py-2 px-4">Ref #</th>
+                  <th class="py-2 px-4">Booking</th>
+                  <th class="py-2 px-4">Driver</th>
+                  <th class="py-2 px-4">Amount</th>
+                  <th class="py-2 px-4">Reason</th>
+                  <th class="py-2 px-4">Status</th>
+                  <th class="py-2 px-4">Requested</th>
+                  <th class="py-2 px-4">Decision Date</th>
+                  <th class="py-2 px-4">Remarks</th>
+                </tr>
+              </thead>
+              <tbody id="refundHistoryTbody">
+                <tr><td colspan="9" class="text-center py-8">
+                  <div class="flex flex-col items-center">
+                    <div class="animate-pulse mb-4">
+                      <img src="{% static 'img/TarTrack Logo_sakto.png' %}" alt="TarTrack" class="h-16 w-auto opacity-70">
+                    </div>
+                  </div>
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="px-6 pt-2 text-xs text-gray-500">
+            * Decision Date shows <em>approved_at</em> when available.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Approve Confirm Modal (overlay above refundModal; DOES NOT HIDE PARENT) -->
+  <div id="approveConfirmModal" class="fixed inset-0 z-[70] hidden bg-black/40 flex justify-center items-center md:ml-64 p-4">
+    <div class="bg-white w-full max-w-md mx-auto rounded-xl border border-[#561c24] shadow-2xl text-[#561c24] font-sans p-6 relative">
+      <button onclick="closeApproveConfirmModal()" class="absolute top-4 right-4 text-[#561c24] hover:text-red-600 text-2xl font-bold">&times;</button>
+      <h2 class="text-xl font-bold mb-1">Approve Refund</h2>
+      <p id="approveMeta" class="text-sm text-[#6d2932] mb-3"></p>
+      <p class="text-sm text-gray-700 mb-3">Add remarks for approving this refund (optional).</p>
+      <textarea id="approveRemarksInput" class="w-full border border-[#561c24]/40 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#561c24]/40"
+                rows="4" placeholder="Enter approval remarks..."></textarea>
+      <div class="flex justify-end gap-3 mt-5">
+        <button type="button" onclick="closeApproveConfirmModal()" class="px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 text-gray-800">Back</button>
+        <button type="button" id="approveConfirmBtn" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white">Approve</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reject Confirm Modal (overlay) -->
+  <div id="rejectConfirmModal" class="fixed inset-0 z-[70] hidden bg-black/40 flex justify-center items-center md:ml-64 p-4">
+    <div class="bg-white w-full max-w-md mx-auto rounded-xl border border-[#561c24] shadow-2xl text-[#561c24] font-sans p-6 relative">
+      <button onclick="closeRejectConfirmModal()" class="absolute top-4 right-4 text-[#561c24] hover:text-red-600 text-2xl font-bold">&times;</button>
+      <h2 class="text-xl font-bold mb-1">Reject Refund</h2>
+      <p id="rejectMeta" class="text-sm text-[#6d2932] mb-3"></p>
+      <p class="text-sm text-gray-700 mb-3">Please provide remarks for rejecting this refund.</p>
+      <textarea id="rejectRemarksInput" class="w-full border border-[#561c24]/40 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#561c24]/40"
+                rows="4" placeholder="Enter reason for rejection..."></textarea>
+      <div class="flex justify-end gap-3 mt-5">
+        <button type="button" onclick="closeRejectConfirmModal()" class="px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 text-gray-800">Back</button>
+        <button type="button" id="rejectConfirmBtn" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white">Reject</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Percentage Modal -->
+  <div id="editPercentageModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-50 flex justify-center items-center md:ml-64">
+    <div class="bg-white w-full max-w-md mx-auto rounded-xl border border-[#561c24] shadow-lg text-[#561c24] font-sans p-6 relative">
+      <div class="absolute top-4 right-4">
+        <button onclick="closeEditPercentageModal()" class="text-[#561c24] hover:text-red-600 text-2xl font-bold">&times;</button>
+      </div>
+      <h2 class="text-xl font-bold mb-3">Edit Organization Percentage</h2>
+      <p class="text-sm text-gray-700 mb-4">Adjust the organization's share of earnings. Driver percentage will be automatically calculated.</p>
+      
+      <div class="mb-4">
+        <label for="percentageInput" class="block text-sm font-medium mb-2">Organization Percentage (%)</label>
+        <input type="number" id="percentageInput" min="0" max="100" step="0.1" 
+               class="w-full border border-[#561c24]/40 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#561c24]/40" 
+               placeholder="Enter percentage (0-100)">
+        <p class="text-xs text-gray-500 mt-1">Current: <span id="currentPercentage">20.0</span>%</p>
+      </div>
+      
+      <div class="bg-gray-50 rounded-lg p-3 mb-4">
+        <p class="text-sm font-medium mb-1">Preview:</p>
+        <div class="flex justify-between text-sm">
+          <span>Organization:</span>
+          <span id="previewOrg">20.0%</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span>Driver:</span>
+          <span id="previewDriver">80.0%</span>
+        </div>
+      </div>
+      
+      <div class="flex justify-end gap-4 mt-5">
+        <button type="button" onclick="closeEditPercentageModal()" class="px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 text-gray-800">Cancel</button>
+        <button type="button" id="savePercentageBtn" class="px-4 py-2 rounded-lg bg-[#561c24] hover:bg-[#6d2932] text-white">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- ===== SALES REPORT MODAL ===== -->
+<div id="salesReportModal" class="fixed inset-0 md:inset-y-0 md:left-64 md:right-0 z-[80] hidden">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeSalesModal()"></div>
+
+  <div class="relative mx-auto w-full max-w-6xl p-4 flex items-center justify-center">
+    <div class="w-full bg-white rounded-2xl shadow-2xl ring-1 ring-[#561c24]/10 overflow-hidden my-8 max-h-[85vh] flex flex-col">
+
+      <!-- Header (sticky, glassy) -->
+      <div id="salesHeader" class="sticky top-0 z-10 px-6 py-4 bg-white/80 backdrop-blur-md border-b border-[#561c24]/10 flex items-center justify-between transition-shadow">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-[#561c24]/10 flex items-center justify-center">
+            <i class="bi bi-cash-coin text-[#561c24] text-xl"></i>
+          </div>
+          <div>
+            <h2 class="text-lg md:text-xl font-semibold tracking-tight text-[#561c24]">Earnings Report</h2>
+            <p class="text-xs text-[#561c24]/60">Standard bookings only; cancellations tracked separately</p>
+          </div>
+        </div>
+        <button onclick="closeSalesModal()" class="inline-flex items-center justify-center w-9 h-9 rounded-xl hover:bg-[#561c24]/10 transition" title="Close">
+          <i class="bi bi-x-lg text-[#561c24] text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Scrollable content -->
+      <div id="salesScroll" class="overflow-y-auto">
+        <div class="px-6 pt-4 pb-6 space-y-6">
+
+          <!-- Filters with integrated info -->
+          <div class="rounded-xl ring-1 ring-[#561c24]/10 bg-[#faf8f6] p-4">
+            <!-- Combined Info Header -->
+            <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div class="flex items-start gap-2 mb-2">
+                <i class="bi bi-info-circle text-blue-600 mt-0.5"></i>
+                <div class="text-sm text-blue-800">
+                  <p class="font-medium">Sales Report Generator</p>
+                  <p class="text-xs mt-1">Select date range and grouping to generate detailed sales report. Use the PDF button to export your customized report.</p>
+                </div>
+              </div>
+              <div class="border-t border-blue-200 pt-2 mt-2">
+                <p class="text-xs text-blue-700"><i class="bi bi-exclamation-triangle mr-1"></i><strong>Constraints:</strong> Max 1 year range • From date cannot be future • To date cannot exceed today</p>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3">
+
+              <!-- From -->
+              <div class="lg:col-span-3">
+                <label class="text-xs text-[#6d2932]/80 block mb-1">From <span class="text-red-500">*</span></label>
+                <input id="salesFrom" type="date" required 
+                       class="w-full rounded-lg border border-[#561c24]/20 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#561c24]/30">
+                <p id="salesFromError" class="text-xs text-red-500 mt-1 hidden"></p>
+              </div>
+
+              <!-- To -->
+              <div class="lg:col-span-3">
+                <label class="text-xs text-[#6d2932]/80 block mb-1">To <span class="text-red-500">*</span></label>
+                <input id="salesTo" type="date" required 
+                       class="w-full rounded-lg border border-[#561c24]/20 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#561c24]/30">
+                <p id="salesToError" class="text-xs text-red-500 mt-1 hidden"></p>
+              </div>
+
+              <!-- Group + Weekly pager stacked -->
+              <div class="lg:col-span-3">
+                <label class="text-xs text-[#6d2932]/80 block mb-1">Group by</label>
+                <div class="space-y-2">
+                  <select id="salesGroup" class="w-full rounded-lg border border-[#561c24]/20 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#561c24]/30">
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly" selected>Monthly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+
+                  <!-- Weekly month pager (kept just under Group by) -->
+                  <div id="weeklyPager" class="hidden flex items-center gap-2">
+                    <button id="weekPrevMonth" class="px-3 py-2 rounded-lg border border-[#561c24]/20 hover:bg-[#561c24] hover:text-white transition">
+                      <i class="bi bi-chevron-left"></i><span class="ml-1 hidden sm:inline">Prev</span>
+                    </button>
+                    <span id="weekMonthLabel" class="text-sm font-medium min-w-[160px] text-center"></span>
+                    <button id="weekNextMonth" class="px-3 py-2 rounded-lg border border-[#561c24]/20 hover:bg-[#561c24] hover:text-white transition">
+                      <span class="mr-1 hidden sm:inline">Next</span><i class="bi bi-chevron-right"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Apply -->
+              <div class="lg:col-span-2 flex items-end justify-end gap-2">
+                <button id="salesApplyBtn" class="px-4 py-2 rounded-lg border border-[#561c24]/20 text-[#561c24] hover:bg-[#561c24] hover:text-white transition">
+                  Apply
+                </button>
+                <button id="salesExportPdfBtn" class="px-4 py-2 rounded-lg bg-[#561c24] text-white hover:bg-[#6d2932] transition flex items-center gap-2" title="Export Earnings Report to PDF">
+                  <i class="bi bi-file-earmark-pdf"></i>
+                  <span class="hidden sm:inline">PDF</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Summary (compact, even) -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="rounded-xl ring-1 ring-[#561c24]/10 bg-white p-4">
+              <p class="text-xs text-gray-500">Total Sales</p>
+              <p id="salesTotal" class="text-2xl font-semibold tracking-tight">₱0</p>
+            </div>
+            <div class="rounded-xl ring-1 ring-[#561c24]/10 bg-white p-4">
+              <p class="text-xs text-gray-500">Total Bookings</p>
+              <p id="salesBookings" class="text-2xl font-semibold tracking-tight">0</p>
+            </div>
+            <div class="rounded-xl ring-1 ring-[#561c24]/10 bg-white p-4">
+              <p class="text-xs text-gray-500">Avg per Booking</p>
+              <p id="salesAvg" class="text-2xl font-semibold tracking-tight">₱0</p>
+            </div>
+            <div class="rounded-xl ring-1 ring-[#561c24]/10 bg-white p-4">
+              <p class="text-xs text-gray-500">Cancellations (lost)</p>
+              <p id="salesCancels" class="text-2xl font-semibold tracking-tight">0 (₱0)</p>
+            </div>
+          </div>
+
+          <!-- Chart (taller, cushioned) -->
+          <div class="rounded-xl ring-1 ring-[#561c24]/10 bg-white p-4">
+            <div class="relative h-72 md:h-80">
+              <canvas id="salesChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Table (sticky header, lighter chrome) -->
+          <div class="rounded-xl ring-1 ring-[#561c24]/10 bg-white overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-sm">
+                <thead
+                  id="salesTableHead"
+                  class="sticky top-[var(--sales-header-h)] z-20 bg-[#f7f3ee]/90 backdrop-blur supports-[backdrop-filter]:bg-[#f7f3ee]/80 text-[#561c24]"
+                >
+                  <tr class="text-left">
+                    <th class="px-4 py-2 font-semibold">Period</th>
+                    <th class="px-4 py-2 font-semibold text-right">Sales (₱)</th>
+                    <th class="px-4 py-2 font-semibold text-right">Bookings</th>
+                    <th class="px-4 py-2 font-semibold text-right">Avg / Booking</th>
+                    <th class="px-4 py-2 font-semibold text-right">Cancellations</th>
+                    <th class="px-4 py-2 font-semibold text-right">Lost (₱)</th>
+                  </tr>
+                </thead>
+                <tbody id="salesTableBody" class="[&>tr:nth-child(even)]:bg-[#faf8f6]">
+                  <tr><td class="px-4 py-4 text-center text-gray-500" colspan="6">No data</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+<!-- ===== /SALES REPORT MODAL ===== -->
+
+
+  <!-- JSON data for HOURLY chart (today) -->
+  <script id="hourly-total-data" type="application/json">
+    {% if hourly_total_json %}{{ hourly_total_json|safe }}{% else %}[]{% endif %}
+  </script>
+
+  <script src="{% static 'js/sidebar.js' %}"></script>
+
+  <!-- ===== Chart + general page init (today-only hourly) ===== -->
+  <script>
+    /* ---------- Utils ---------- */
+    const setText = (id, value) => {
+      const el = document.getElementById(id);
+      if (!el) { console.warn(`[Payslip] Missing element #${id}`); return; }
+      el.textContent = value ?? '';
+    };
+
+    const pesoFmt = v => `₱ ${Number(v || 0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+
+    function updateEmptyRow(tbodySelector, emptyRowId) {
+      const tbody = document.querySelector(tbodySelector);
+      if (!tbody) return;
+      const dataRows = tbody.querySelectorAll('tr[data-payout-id], tr[data-row="data"]');
+      const hasData = dataRows.length > 0;
+      const emptyRow = document.getElementById(emptyRowId);
+      if (!emptyRow) return;
+      emptyRow.classList.toggle('hidden', hasData);
+    }
+
+    function formatAllReleasedDates() {
+      document.querySelectorAll('.released-date').forEach(el => {
+        const iso = el.getAttribute('data-iso');
+        if (!iso) { el.textContent = ''; return; }
+        const d = new Date(iso);
+        el.textContent = isNaN(d) ? iso : d.toLocaleDateString();
+      });
+    }
+
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    // Global variables for current percentages
+    let currentOrgPercentage;
+    let currentDriverPercentage;
+
+    async function fetchCurrentPercentages() {
+      try {
+        const response = await fetch('/api/earnings/', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          currentOrgPercentage = data.admin_percentage || 20.0;
+          currentDriverPercentage = data.driver_percentage || 80.0;
+          updatePercentageDisplay();
+        } else {
+          currentOrgPercentage = 20.0;
+          currentDriverPercentage = 80.0;
+          updatePercentageDisplay();
+        }
+      } catch (error) {
+        console.error('Error fetching percentages:', error);
+        currentOrgPercentage = 20.0;
+        currentDriverPercentage = 80.0;
+        updatePercentageDisplay();
+      }
+    }
+
+    // Update percentage display in UI
+    function updatePercentageDisplay() {
+      console.log('[DEBUG] updatePercentageDisplay called with:', currentOrgPercentage, currentDriverPercentage);
+      if (currentOrgPercentage === undefined || currentDriverPercentage === undefined) {
+        console.log('[DEBUG] Percentages undefined, skipping display update');
+        return;
+      }
+      
+      const orgTitle = document.getElementById('orgShareTitle');
+      const driverTitle = document.getElementById('driverShareTitle');
+      const currentPercentageSpan = document.getElementById('currentPercentage');
+      const previewOrg = document.getElementById('previewOrg');
+      const previewDriver = document.getElementById('previewDriver');
+      
+      console.log('[DEBUG] Updating UI elements with percentages');
+      
+      // Format as integer if whole number, otherwise 1 decimal
+      const formatPercentage = (pct) => pct % 1 === 0 ? Math.round(pct).toString() : pct.toFixed(1);
+      
+      if (orgTitle) orgTitle.textContent = `Organization Total Shares (${formatPercentage(currentOrgPercentage)}%)`;
+      if (driverTitle) driverTitle.textContent = `Driver Total Shares (${formatPercentage(currentDriverPercentage)}%)`;
+      if (currentPercentageSpan) currentPercentageSpan.textContent = formatPercentage(currentOrgPercentage);
+      if (previewOrg) previewOrg.textContent = `${formatPercentage(currentOrgPercentage)}%`;
+      if (previewDriver) previewDriver.textContent = `${formatPercentage(currentDriverPercentage)}%`;
+    }
+
+    /* ---------- Tabs ---------- */
+    function switchTab(tab) {
+      const pendingTab = document.getElementById('pendingTab');
+      const releasedTab = document.getElementById('releasedTab');
+      const pendingContent = document.getElementById('pendingContent');
+      const releasedContent = document.getElementById('releasedContent');
+
+      if (tab === 'pending') {
+        pendingTab.classList.add('bg-[#561c24]', 'text-white');
+        pendingTab.classList.remove('bg-transparent', 'text-[#561c24]');
+        releasedTab.classList.add('bg-transparent', 'text-[#561c24]');
+        releasedTab.classList.remove('bg-[#561c24]', 'text-white');
+        pendingContent.classList.remove('hidden');
+        releasedContent.classList.add('hidden');
+      } else {
+        releasedTab.classList.add('bg-[#561c24]', 'text-white');
+        releasedTab.classList.remove('bg-transparent', 'text-[#561c24]');
+        pendingTab.classList.add('bg-transparent', 'text-[#561c24]');
+        pendingTab.classList.remove('bg-[#561c24]', 'text-white');
+        releasedContent.classList.remove('hidden');
+        pendingContent.classList.add('hidden');
+      }
+    }
+
+    // Edit Percentage Modal Functions
+    function openEditPercentageModal() {
+      const modal = document.getElementById('editPercentageModal');
+      const input = document.getElementById('percentageInput');
+      
+      if (modal && input) {
+        const pct = currentOrgPercentage ;
+        input.value = pct % 1 === 0 ? Math.round(pct) : pct;
+        updatePreview();
+        modal.classList.remove('hidden');
+      }
+    }
+
+    function closeEditPercentageModal() {
+      const modal = document.getElementById('editPercentageModal');
+      if (modal) {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function updatePreview() {
+      const input = document.getElementById('percentageInput');
+      const previewOrg = document.getElementById('previewOrg');
+      const previewDriver = document.getElementById('previewDriver');
+      
+      if (input && previewOrg && previewDriver) {
+        const orgPct = parseFloat(input.value) || 0;
+        const driverPct = 100 - orgPct;
+        
+        const formatPct = (pct) => pct % 1 === 0 ? Math.round(pct) : pct;
+        
+        previewOrg.textContent = `${formatPct(orgPct)}%`;
+        previewDriver.textContent = `${formatPct(driverPct)}%`;
+      }
+    }
+
+    async function savePercentage() {
+      const input = document.getElementById('percentageInput');
+      const saveBtn = document.getElementById('savePercentageBtn');
+      
+      if (!input || !saveBtn) return;
+      
+      const percentage = parseFloat(input.value);
+      
+      if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+        alert('Please enter a valid percentage between 0 and 100');
+        return;
+      }
+      
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+      
+      try {
+        const response = await fetch('/api/earnings/update-percentage/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+          },
+          body: JSON.stringify({ percentage: percentage })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          currentOrgPercentage = percentage;
+          currentDriverPercentage = 100 - percentage;
+          updatePercentageDisplay();
+          closeEditPercentageModal();
+          // alert(`Percentage updated successfully! Organization: ${percentage}%, Driver: ${100 - percentage}%`);
+        } else {
+          alert(`Error: ${data.error}`);
+        }
+      } catch (error) {
+        console.error('Error updating percentage:', error);
+        alert('Failed to update percentage. Please try again.');
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Changes';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      fetchCurrentPercentages();
+      
+      const editBtn = document.getElementById('editPercentageBtn');
+      if (editBtn) editBtn.addEventListener('click', openEditPercentageModal);
+      
+      const percentageInput = document.getElementById('percentageInput');
+      if (percentageInput) percentageInput.addEventListener('input', updatePreview);
+      
+      const saveBtn = document.getElementById('savePercentageBtn');
+      if (saveBtn) saveBtn.addEventListener('click', savePercentage);
+      
+      formatAllReleasedDates();
+      updateEmptyRow('#pendingTableBody tr', 'pending-empty-row');
+      updateEmptyRow('#releasedTableBody tr', 'released-empty-row');
+        pendingTab.classList.add('bg-transparent', 'text-[#561c24]');
+        pendingTab.classList.remove('bg-[#561c24]', 'text-white');
+        releasedContent.classList.remove('hidden');
+        pendingContent.classList.add('hidden');
+      }
+    );
+
+    // === Period dropdown handler
+    function handleAggregationChange(mode) {
+      const label = document.getElementById('chartPeriodLabel');
+      if (label) {
+        const map = {
+          daily: 'Hourly income (today)',
+          weekly: 'Weekly income',
+          monthly: 'Daily income (this month)',
+          yearly: 'Monthly income (this year)'
+        };
+        label.textContent = map[mode] || 'Income';
+      }
+      console.log('Selected period:', mode);
+    }
+
+    // Pagination variables
+    let pendingCurrentPage = 1;
+    let releasedCurrentPage = 1;
+    const itemsPerPage = 10;
+
+    function paginateTable(tableSelector, currentPage, pageInfoId, prevBtnId, nextBtnId) {
+      const rows = document.querySelectorAll(tableSelector);
+      const totalItems = rows.length;
+      const totalPages = Math.ceil(totalItems / itemsPerPage);
+      
+      // Hide all rows
+      rows.forEach(row => row.style.display = 'none');
+      
+      // Show current page rows
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+      for (let i = startIndex; i < endIndex && i < totalItems; i++) {
+        if (rows[i]) rows[i].style.display = '';
+      }
+      
+      // Update page info
+      const pageInfo = document.getElementById(pageInfoId);
+      if (pageInfo) {
+        pageInfo.textContent = `Page ${currentPage} of ${Math.max(1, totalPages)} (${totalItems} items)`;
+      }
+      
+      // Update button states
+      const prevBtn = document.getElementById(prevBtnId);
+      const nextBtn = document.getElementById(nextBtnId);
+      if (prevBtn) prevBtn.disabled = currentPage <= 1;
+      if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
+    }
+
+    function changePendingPage(direction) {
+      const totalRows = document.querySelectorAll('.pending-row').length;
+      const totalPages = Math.ceil(totalRows / itemsPerPage);
+      
+      pendingCurrentPage += direction;
+      if (pendingCurrentPage < 1) pendingCurrentPage = 1;
+      if (pendingCurrentPage > totalPages) pendingCurrentPage = totalPages;
+      
+      paginateTable('.pending-row', pendingCurrentPage, 'pendingPageInfo', 'pendingPrevBtn', 'pendingNextBtn');
+    }
+
+    function changeReleasedPage(direction) {
+      const totalRows = document.querySelectorAll('.released-row').length;
+      const totalPages = Math.ceil(totalRows / itemsPerPage);
+      
+      releasedCurrentPage += direction;
+      if (releasedCurrentPage < 1) releasedCurrentPage = 1;
+      if (releasedCurrentPage > totalPages) releasedCurrentPage = totalPages;
+      
+      paginateTable('.released-row', releasedCurrentPage, 'releasedPageInfo', 'releasedPrevBtn', 'releasedNextBtn');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Fetch current percentages on page load
+      fetchCurrentPercentages();
+      
+      // Tables init
+      switchTab('pending');
+      updateEmptyRow('#pendingContent tbody', 'pending-empty-row');
+      updateEmptyRow('#releasedContent tbody', 'released-empty-row');
+      formatAllReleasedDates();
+      
+      // Initialize pagination
+      paginateTable('.pending-row', pendingCurrentPage, 'pendingPageInfo', 'pendingPrevBtn', 'pendingNextBtn');
+      paginateTable('.released-row', releasedCurrentPage, 'releasedPageInfo', 'releasedPrevBtn', 'releasedNextBtn');
+
+      // Attach dropdown change
+      document.getElementById('aggSelect')?.addEventListener('change', (e) => {
+        handleAggregationChange(e.target.value);
+      });
+
+      // ===== Edit Percentage Modal =====
+      const editPercentageBtn = document.getElementById('editPercentageBtn');
+      const editPercentageModal = document.getElementById('editPercentageModal');
+      const percentageInput = document.getElementById('percentageInput');
+      const savePercentageBtn = document.getElementById('savePercentageBtn');
+      const currentPercentage = document.getElementById('currentPercentage');
+      const previewOrg = document.getElementById('previewOrg');
+      const previewDriver = document.getElementById('previewDriver');
+      
+      let currentOrgPercentage; // Will be updated from API
+      
+
+      
+      function updateTitles(orgPct) {
+        const driverPct = 100 - orgPct;
+        document.getElementById('orgShareTitle').textContent = `Organization Total Shares (${orgPct.toFixed(0)}%)`;
+        document.getElementById('driverShareTitle').textContent = `Driver Total Shares (${driverPct.toFixed(0)}%)`;
+      }
+      
+      function updatePreview() {
+        const value = parseFloat(percentageInput.value) || 0;
+        const driverValue = 100 - value;
+        previewOrg.textContent = `${value.toFixed(1)}%`;
+        previewDriver.textContent = `${driverValue.toFixed(1)}%`;
+      }
+      
+      editPercentageBtn?.addEventListener('click', () => {
+        percentageInput.value = currentOrgPercentage;
+        updatePreview();
+        editPercentageModal.classList.remove('hidden');
+      });
+      
+      percentageInput?.addEventListener('input', updatePreview);
+      
+      savePercentageBtn?.addEventListener('click', async () => {
+        const newPercentage = parseFloat(percentageInput.value);
+        
+        if (isNaN(newPercentage) || newPercentage < 0 || newPercentage > 100) {
+          alert('Please enter a valid percentage between 0 and 100');
+          return;
+        }
+        
+        try {
+          const response = await fetch('/api/earnings/update-percentage/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({ percentage: newPercentage })
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            currentOrgPercentage = newPercentage;
+            currentPercentage.textContent = newPercentage.toFixed(1);
+            updateTitles(newPercentage);
+            closeEditPercentageModal();
+            
+            // Show success message
+            const successMsg = document.createElement('div');
+            successMsg.className = 'fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+            successMsg.textContent = `Percentage updated to ${newPercentage}%`;
+            document.body.appendChild(successMsg);
+            setTimeout(() => successMsg.remove(), 3000);
+            
+            // Optionally reload the page to reflect changes
+            setTimeout(() => window.location.reload(), 1500);
+          } else {
+            alert('Error updating percentage: ' + result.error);
+          }
+        } catch (error) {
+          console.error('Error updating percentage:', error);
+          alert('Failed to update percentage. Please try again.');
+        }
+      });
+      
+      window.closeEditPercentageModal = () => {
+        editPercentageModal.classList.add('hidden');
+      };
+
+      // ===== Sales Report Constraints =====
+      function initSalesConstraints() {
+        const fromInput = document.getElementById('salesFrom');
+        const toInput = document.getElementById('salesTo');
+        const applyBtn = document.getElementById('salesApplyBtn');
+        
+        if (!fromInput || !toInput || !applyBtn) return;
+        
+        // Set default dates (current year: Jan 1 to today)
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const yearStart = new Date(currentYear, 0, 1); // January 1st of current year
+        
+        fromInput.value = yearStart.toISOString().split('T')[0];
+        toInput.value = today.toISOString().split('T')[0];
+        
+        // Set constraints - can select from 2025 onwards but not future dates
+        const minDate = new Date(2025, 0, 1); // January 1, 2025
+        
+        fromInput.min = minDate.toISOString().split('T')[0];
+        fromInput.max = today.toISOString().split('T')[0];
+        toInput.max = today.toISOString().split('T')[0];
+        
+        function validateDates() {
+          const fromDate = new Date(fromInput.value);
+          const toDate = new Date(toInput.value);
+          const fromError = document.getElementById('salesFromError');
+          const toError = document.getElementById('salesToError');
+          
+          let isValid = true;
+          
+          // Clear previous errors
+          fromError.classList.add('hidden');
+          toError.classList.add('hidden');
+          fromInput.classList.remove('border-red-500');
+          toInput.classList.remove('border-red-500');
+          
+          // Validate from date
+          if (!fromInput.value) {
+            fromError.textContent = 'From date is required';
+            fromError.classList.remove('hidden');
+            fromInput.classList.add('border-red-500');
+            isValid = false;
+          } else if (fromDate > today) {
+            fromError.textContent = 'From date cannot be in the future';
+            fromError.classList.remove('hidden');
+            fromInput.classList.add('border-red-500');
+            isValid = false;
+          }
+          
+          // Validate to date
+          if (!toInput.value) {
+            toError.textContent = 'To date is required';
+            toError.classList.remove('hidden');
+            toInput.classList.add('border-red-500');
+            isValid = false;
+          } else if (toDate > today) {
+            toError.textContent = 'To date cannot be in the future';
+            toError.classList.remove('hidden');
+            toInput.classList.add('border-red-500');
+            isValid = false;
+          }
+          
+          // Validate date range
+          if (fromInput.value && toInput.value) {
+            if (fromDate > toDate) {
+              toError.textContent = 'To date must be after from date';
+              toError.classList.remove('hidden');
+              toInput.classList.add('border-red-500');
+              isValid = false;
+            } else {
+              // No maximum range limit - users can select any range as long as it's not in the future
+            }
+          }
+          
+          applyBtn.disabled = !isValid;
+          return isValid;
+        }
+        
+        // Update to date min when from date changes
+        fromInput.addEventListener('change', () => {
+          if (fromInput.value) {
+            toInput.min = fromInput.value;
+          }
+          validateDates();
+        });
+        
+        toInput.addEventListener('change', validateDates);
+        
+        // Initial validation
+        validateDates();
+      }
+      
+      // Initialize constraints when sales modal opens
+      document.getElementById('openSalesFromChartBtn')?.addEventListener('click', () => {
+        setTimeout(initSalesConstraints, 100);
+      });
+
+      // ===== CHART: Strictly today's hourly (Asia/Manila) =====
+      const peso = (v) => `₱ ${Number(v || 0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+      const hourLabel = (h) => {
+        h = Number(h);
+        const suffix = h < 12 ? 'AM' : 'PM';
+        const hour12 = ((h % 12) || 12);
+        return `${hour12} ${suffix}`;
+      };
+
+      try {
+        const hourlyRaw = document.getElementById('hourly-total-data')?.textContent || '[]';
+        const hourlyParsed = JSON.parse(hourlyRaw);
+
+        // Current hour (Asia/Manila)
+        const currentHour = Number(
+          new Intl.DateTimeFormat('en-PH', {
+            timeZone: 'Asia/Manila',
+            hour: '2-digit',
+            hour12: false
+          }).format(Date.now())
+        );
+
+        // Build map
+        const map = new Map();
+        if (Array.isArray(hourlyParsed)) {
+          for (const it of hourlyParsed) {
+            const h = Number(it.hour);
+            const val = Number(it.total_amount || 0);
+            if (!Number.isNaN(h) && h >= 0 && h <= 23) {
+              map.set(h, (map.get(h) || 0) + val);
+            }
+          }
+        }
+
+        // 24 hours
+        const labels = [];
+        const data = [];
+        for (let h = 0; h < 24; h++) {
+          labels.push(hourLabel(h));
+          data.push(Number(map.get(h) || 0));
+        }
+
+        // Peak banner
+        const banner = document.getElementById('peakHourBanner');
+        const allZero = data.every(v => (Number(v) || 0) === 0);
+        if (!allZero) {
+          const peakIdx = data.reduce((m,i,idx,arr)=> i>arr[m]?idx:m, 0);
+          if (banner) {
+            banner.textContent = `Peak hour: ${labels[peakIdx]} — ${peso(data[peakIdx])}`;
+            banner.classList.remove('hidden');
+          }
+        } else if (banner) {
+          banner.classList.add('hidden');
+        }
+
+        const canvas = document.getElementById('totalDailyChart');
+        if (canvas && window.Chart) {
+          const ctx = canvas.getContext('2d');
+
+          new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [{
+                label: "Today's Hourly Income (₱)",
+                data,
+                tension: 0,
+                borderWidth: 2,
+                borderColor: '#561c24',
+                spanGaps: true,
+                fill: 'origin',
+                backgroundColor: 'rgba(86, 28, 36, 0.14)',
+                pointStyle: 'circle',
+                pointBorderColor: '#561c24',
+                pointBorderWidth: 1.5,
+                pointBackgroundColor: (ctx) =>
+                  ctx.dataIndex === ctx.dataset.data.length - 1 ? '#561c24' : '#ffffff',
+                pointRadius: (ctx) =>
+                  ctx.dataIndex === ctx.dataset.data.length - 1 ? 4 : 2,
+                pointHoverRadius: (ctx) =>
+                  ctx.dataIndex === ctx.dataset.data.length - 1 ? 5 : 3,
+                pointHitRadius: 10
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              layout: { padding: { left: 6, right: 8, top: 6, bottom: 6 } },
+              animation: { duration: 500, easing: 'easeOutQuad' },
+              scales: {
+                x: {
+                  type: 'category',
+                  ticks: { autoSkip: true, maxTicksLimit: 12, color: '#6d2932', font: { size: 11, weight: '600' } },
+                  grid: { display: true, color: '#e6e6e6', borderColor: '#d9d9d9', tickColor: '#d9d9d9', lineWidth: 1 }
+                },
+                y: {
+                  beginAtZero: true,
+                  suggestedMax: allZero ? 1 : undefined,
+                  ticks: { color: '#6d2932', font: { size: 11, weight: '600' }, callback: (v) => `₱ ${Number(v).toLocaleString()}` },
+                  grid: { color: '#efefef', borderColor: '#d9d9d9', tickColor: '#d9d9d9', lineWidth: 1 }
+                }
+              },
+              plugins: {
+                legend: { display: true, position: 'top', labels: { color: '#6d2932', font: { size: 12, weight: '700' } } },
+                tooltip: {
+                  backgroundColor: 'rgba(109, 41, 50, 0.95)',
+                  titleColor: '#fff', bodyColor: '#fff',
+                  borderColor: '#c7b7a3', borderWidth: 1, displayColors: false,
+                  callbacks: {
+                    title: (items) => (items?.length ? labels[items[0].dataIndex] : ''),
+                    label: (ctx) => ` ${peso(ctx.parsed.y ?? 0)}`
+                  }
+                }
+              }
+            }
+          });
+        }
+      } catch (e) {
+        console.error('Chart init error:', e);
+      }
+    });
+
+    /* ---------- Payslip Modal (GET details) ---------- */
+    function fetchPayoutDetails(detailUrlOrId) {
+      const url = (detailUrlOrId || '').startsWith('/')
+        ? detailUrlOrId
+        : `/api/earnings/${detailUrlOrId}/`;
+
+      fetch(url, { credentials: 'same-origin' })
+        .then(async res => {
+          if (!res.ok) {
+            const txt = await res.text().catch(() => '');
+            throw new Error(`HTTP ${res.status} ${res.statusText}: ${txt || 'No response body'}`);
+          }
+          return res.json();
+        })
+        .then(data => {
+          setText('modalRef', data.id);
+          setText('modalDate', data.payout_date ? new Date(data.payout_date).toLocaleDateString() : '');
+          setText('modalName', data.driver_name || '');
+          const statusCap = (data.status || 'released').replace(/^./, c => c.toUpperCase());
+          setText('modalStatus', statusCap);
+          setText('modalAmount', `₱ ${parseFloat(data.total_amount || 0).toFixed(2)}`);
+          setText('modalRemarks', data.remarks || '');
+          const modal = document.getElementById('payslipModal');
+          if (modal) modal.classList.remove('hidden');
+        })
+        .catch(err => {
+          console.error(err);
+          alert(`Unable to load payout details.\n\n${err.message}`);
+        });
+    }
+    function closeModal() {
+      const modal = document.getElementById('payslipModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    /* ---------- Release Confirmation Modal ---------- */
+    let selectedPayoutId = null;
+    function openConfirmModal(payoutId, driverName, amount) {
+      selectedPayoutId = payoutId;
+      const amt = isNaN(parseFloat(amount)) ? '' : ` (₱ ${parseFloat(amount).toFixed(2)})`;
+      setText('confirmMessage', `You are releasing payout for ${driverName}${amt}. Confirm to release?`);
+      setText('confirmMeta', `Reference: ${payoutId}`);
+      const remarksEl = document.getElementById('confirmRemarks');
+      if (remarksEl) { remarksEl.value = ''; setTimeout(() => remarksEl.focus(), 0); }
+      document.getElementById('confirmModal')?.classList.remove('hidden');
+    }
+    function closeConfirmModal() {
+      document.getElementById('confirmModal')?.classList.add('hidden');
+      selectedPayoutId = null;
+    }
+    document.getElementById('confirmBtn').addEventListener('click', function () {
+      if (selectedPayoutId) {
+        const id = selectedPayoutId;
+        const remarks = (document.getElementById('confirmRemarks')?.value || '').trim();
+        closeConfirmModal();
+        releasePayout(id, remarks);
+      }
+    });
+
+    /* ---------- Release action (POST) ---------- */
+    function releasePayout(payoutId, remarks) {
+      const row = document.querySelector(`#pendingContent tr[data-payout-id="${payoutId}"]`);
+      const releaseBtn = row ? row.querySelector('button[data-release-url]') : null;
+      const postUrl = releaseBtn ? releaseBtn.getAttribute('data-release-url')
+                                 : `/api/earnings/${payoutId}/release/`;
+
+      fetch(postUrl, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrftoken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ remarks: remarks || '' })
+      })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || data.detail || 'Failed to release payout.');
+        }
+        return data;
+      })
+      .then(data => {
+        if (data && data.success && data.payout) {
+          const { payout } = data;
+
+          // Remove from Pending
+          const prow = document.querySelector(`#pendingContent tr[data-payout-id="${payoutId}"]`);
+          if (prow) prow.remove();
+          updateEmptyRow('#pendingContent tbody', 'pending-empty-row');
+
+          updateEarningsBadge();   // keep the sidebar badge in sync
+
+          // Add to Released
+          const releasedTable = document.querySelector('#releasedContent tbody');
+          const newRow = document.createElement('tr');
+          newRow.className = 'border-t';
+          newRow.setAttribute('data-row', 'data');
+          const statusCap = (payout.status || 'released').replace(/^./, c => c.toUpperCase());
+          newRow.innerHTML = `
+            <td class="py-2 px-4">${payout.id}</td>
+            <td class="py-2 px-4">${payout.driver_name || ''}</td>
+            <td class="py-2 px-4"><span class="text-green-600 font-medium">${statusCap}</span></td>
+            <td class="py-2 px-4">₱ ${parseFloat(payout.total_amount || 0).toFixed(2)}</td>
+            <td class="py-2 px-4"><span class="released-date" data-iso="${payout.payout_date || ''}"></span></td>
+            <td class="py-2 px-4">
+              <button type="button"
+                onclick="fetchPayoutDetails('/api/earnings/${payout.id}/')" 
+                class="text-[#561c24] hover:text-white hover:bg-[#561c24] px-2 py-1 rounded">
+                <i class="fa-solid fa-file-lines text-lg"></i>
+              </button>
+            </td>
+          `;
+          if (releasedTable) {
+            releasedTable.prepend(newRow);
+            updateEmptyRow('#releasedContent tbody', 'released-empty-row');
+            formatAllReleasedDates();
+          }
+
+          // Show payslip with remarks
+          setText('modalRef', payout.id);
+          setText('modalDate', payout.payout_date ? new Date(payout.payout_date).toLocaleDateString() : '');
+          setText('modalName', payout.driver_name || '');
+          setText('modalStatus', statusCap);
+          setText('modalAmount', `₱ ${parseFloat(payout.total_amount || 0).toFixed(2)}`);
+          setText('modalRemarks', payout.remarks || (remarks || ''));
+          const modal = document.getElementById('payslipModal');
+          if (modal) modal.classList.remove('hidden');
+
+          switchTab('released');
+        } else {
+          alert((data && data.error) || 'Failed to release payout.');
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert(err.message || 'Error releasing payout.');
+      });
+    }
+  </script>
+
+  <!-- ===== Refunds scripts (API-powered) ===== -->
+  <script>
+    // ===== Status policy for visibility =====
+    const REFUND_API_BASE = '/api/refunds';
+
+    // normalize to lower-case keywords we use everywhere
+    const normalizeStatus = (s) => String(s || '').trim().toLowerCase();
+
+    // decided statuses (HIDDEN from active list; visible in History)
+    const DECIDED_STATUSES = ['approved', 'rejected'];
+
+    // undecided statuses (VISIBLE in active list & action modal)
+    const UNDECIDED_STATUSES = ['pending', 'requested', 'for review', 'under review'];
+
+    // Small helpers
+    const statusBadge = (status) => {
+      const s = normalizeStatus(status);
+      const map = {
+        pending:  'bg-yellow-100 text-yellow-800',
+        requested:'bg-blue-100 text-blue-800',
+        'for review': 'bg-blue-100 text-blue-800',
+        'under review': 'bg-blue-100 text-blue-800',
+        approved: 'bg-green-100 text-green-800',
+        rejected: 'bg-red-100 text-red-800'
+      };
+      const label = s.charAt(0).toUpperCase() + s.slice(1);
+      return `<span class="text-xs px-2 py-1 rounded-full ${map[s] || 'bg-gray-100 text-gray-800'}">${label}</span>`;
+    };
+
+    const isDecided = (s) => DECIDED_STATUSES.includes(normalizeStatus(s));
+    const isUndecided = (s) => UNDECIDED_STATUSES.includes(normalizeStatus(s));
+
+    const actionButtons = (row) => {
+      const disabled = !isUndecided(row.status);
+      const disClsApprove = disabled ? 'opacity-40 pointer-events-none' : 'hover:bg-[#16a34a]/10';
+      const disClsReject  = disabled ? 'opacity-40 pointer-events-none' : 'hover:bg-[#e11d48]/10';
+      return `
+        <div class="flex items-center justify-center gap-2">
+          <button title="Approve" onclick="onApproveRefund('${row.id}')"
+                  class="inline-flex items-center justify-center w-9 h-9 rounded-full ${disClsApprove} transition">
+            <i class="bi bi-check-circle-fill text-emerald-600 text-lg"></i>
+          </button>
+          <button title="Reject" onclick="onOpenReject('${row.id}')"
+                  class="inline-flex items-center justify-center w-9 h-9 rounded-full ${disClsReject} transition">
+            <i class="bi bi-x-circle-fill text-rose-600 text-lg"></i>
+          </button>
+        </div>
+      `;
+    };
+
+    // ---------- Overlays: DO NOT hide the refund modal ----------
+    function show(el) { el?.classList.remove('hidden'); }
+    function hide(el) { el?.classList.add('hidden'); }
+
+    // Get row data (ref + amount) from the Refund modal table; fallback fetch if not found
+    async function getRefundInfo(id) {
+      const row = document.getElementById(`refund-row-${id}`);
+      if (row) {
+        const ref = row.dataset.ref || id;
+        const amount = Number(row.dataset.amount || 0);
+        return { ref, amount };
+      }
+      // Fallback to API (in case the row isn't in DOM)
+      try {
+        const res = await fetch(`${REFUND_API_BASE}/${id}/`, { credentials: 'same-origin' });
+        if (res.ok) {
+          const j = await res.json();
+          return { ref: j.short_ref || j.id || id, amount: Number(j.refund_amount || 0) };
+        }
+      } catch(e) { /* ignore */ }
+      return { ref: id, amount: 0 };
+    }
+
+    // Sidebar render (latest 5 undecided only)
+    async function renderRefundSidebar() {
+      const tb = document.getElementById('refundSidebarTbody');
+      if (!tb) return;
+      tb.innerHTML = `<tr><td colspan="5" class="text-center py-6">
+      <div class="flex flex-col items-center">
+        <div class="animate-pulse mb-3">
+          <img src="{% static 'img/TarTrack Logo_sakto.png' %}" alt="TarTrack" class="h-12 w-auto opacity-70">
+        </div>
+      </div>
+    </td></tr>`;
+      try {
+        // We cannot rely on backend filters; fetch a small page and filter client-side
+        const res = await fetch(`${REFUND_API_BASE}?page=1&page_size=10`, { credentials:'same-origin' });
+        if (!res.ok) throw new Error(await res.text());
+        const json = await res.json();
+        const rows = (json.results || []).filter(r => isUndecided(r.status));
+        const top5 = rows.slice(0,5);
+
+        if (!top5.length) {
+          tb.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500">No refund requests</td></tr>`;
+          return;
+        }
+        tb.innerHTML = top5.map(r => `
+          <tr class="border-t">
+            <td class="py-2 px-3 truncate" title="${r.id}">${r.short_ref || r.id}</td>
+            <td class="py-2 px-3 truncate" title="${r.booking_id}">${r.booking_id}</td>
+            <td class="py-2 px-3 truncate" title="${r.reason || ''}">${r.reason || ''}</td>
+            <td class="py-2 px-3">${statusBadge(r.status)}</td>
+            <td class="py-2 px-3 text-center">${actionButtons(r)}</td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        console.error(e);
+        tb.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-rose-600">Failed to load results</td></tr>`;
+      }
+    }
+
+    // Modal + pagination (server-backed but filtered client-side to hide decided)
+    let currentRefundPage = 1;
+    let totalRefundPages = 1;
+
+    function openRefundModal() {
+      document.getElementById('refundModal')?.classList.remove('hidden');
+      loadRefundPage(1);
+    }
+    function closeRefundModal() {
+      document.getElementById('refundModal')?.classList.add('hidden');
+    }
+
+    async function loadRefundPage(page) {
+      const tbody = document.getElementById('refundModalTbody');
+      const pageInfo = document.getElementById('refundPageInfo');
+      const prevBtn = document.getElementById('refundPrevBtn');
+      const nextBtn = document.getElementById('refundNextBtn');
+
+      if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8">
+        <div class="flex flex-col items-center">
+          <div class="animate-pulse mb-4">
+            <img src="{% static 'img/TarTrack Logo_sakto.png' %}" alt="TarTrack" class="h-16 w-auto opacity-70">
+          </div>
+        </div>
+      </td></tr>`;
+
+      try {
+        const pageSize = 10;
+        // Request whatever the server gives; we'll filter out decided on the client
+        const res = await fetch(`${REFUND_API_BASE}?page=${page}&page_size=${pageSize}`, { credentials:'same-origin' });
+        if (!res.ok) throw new Error(await res.text());
+        const json = await res.json();
+
+        const serverList = json.results || [];
+        // filter: active only (undecided)
+        const list = serverList.filter(r => isUndecided(r.status));
+
+        currentRefundPage = json.page || page || 1;
+        totalRefundPages = json.total_pages || 1;
+
+        if (!list.length) {
+          if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-gray-500">No refund requests</td></tr>`;
+        } else {
+          if (tbody) {
+            tbody.innerHTML = list.map(r => `
+              <tr class="border-t" id="refund-row-${r.id}" data-ref="${r.short_ref || r.id}" data-amount="${Number(r.refund_amount || 0)}">
+                <td class="py-2 px-4">${r.short_ref || r.id}</td>
+                <td class="py-2 px-4">${r.booking_id}</td>
+                <td class="py-2 px-4">${r.driver_name || ''}</td>
+                <td class="py-2 px-4">${pesoFmt(r.refund_amount)}</td>
+                <td class="py-2 px-4">${r.reason || ''}</td>
+                <td class="py-2 px-4">${statusBadge(r.status)}</td>
+                <td class="py-2 px-4">${r.created_at ? new Date(r.created_at).toLocaleDateString() : ''}</td>
+                <td class="py-2 px-4 text-center">${actionButtons(r)}</td>
+              </tr>
+            `).join('');
+          }
+        }
+
+        if (pageInfo) pageInfo.textContent = `Page ${currentRefundPage} of ${totalRefundPages}`;
+        if (prevBtn) prevBtn.disabled = currentRefundPage <= 1;
+        if (nextBtn) nextBtn.disabled = currentRefundPage >= totalRefundPages;
+      } catch (e) {
+        console.error(e);
+        if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-rose-600">Failed to load results</td></tr>`;
+      }
+    }
+
+    // ===== Refund History (approved + rejected + void/voided) =====
+    function openRefundHistoryModal() {
+      document.getElementById('refundHistoryModal')?.classList.remove('hidden');
+      loadRefundHistory();
+    }
+    function closeRefundHistoryModal() {
+      document.getElementById('refundHistoryModal')?.classList.add('hidden');
+    }
+
+    async function loadRefundHistory() {
+      const tbody = document.getElementById('refundHistoryTbody');
+      if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8">
+        <div class="flex flex-col items-center">
+          <div class="animate-pulse mb-4">
+            <img src="{% static 'img/TarTrack Logo_sakto.png' %}" alt="TarTrack" class="h-16 w-auto opacity-70">
+          </div>
+        </div>
+      </td></tr>`;
+
+      try {
+        // Fetch per decided status (more robust than assuming status__in support)
+        const statuses = ['approved', 'rejected'];
+        const reqs = statuses.map(s =>
+          fetch(`${REFUND_API_BASE}?status=${encodeURIComponent(s)}&page=1&page_size=100`, { credentials:'same-origin' })
+            .then(r => r.ok ? r.json() : r.text().then(t => { throw new Error(t || 'Failed'); }))
+            .then(j => (j.results || []).map(x => ({...x})))
+        );
+        const parts = await Promise.all(reqs);
+        let rows = parts.flat().filter(r => isDecided(r.status));
+
+        // Sort by decided date (approved_at / updated_at / created_at fallback)
+        rows.sort((a,b) => {
+          const ad = a.approved_at || a.updated_at || a.created_at || '';
+          const bd = b.approved_at || b.updated_at || b.created_at || '';
+          return new Date(bd) - new Date(ad);
+        });
+
+        if (!rows.length) {
+          if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-gray-500">No history yet</td></tr>`;
+          return;
+        }
+
+        const tr = rows.map(r => {
+          const decided = (r.approved_at || r.updated_at) ? new Date(r.approved_at || r.updated_at).toLocaleDateString() : '';
+          const requested = r.created_at ? new Date(r.created_at).toLocaleDateString() : '';
+          return `
+            <tr class="border-t">
+              <td class="py-2 px-4">${r.short_ref || r.id}</td>
+              <td class="py-2 px-4">${r.booking_id}</td>
+              <td class="py-2 px-4">${r.driver_name || ''}</td>
+              <td class="py-2 px-4">${pesoFmt(r.refund_amount)}</td>
+              <td class="py-2 px-4">${r.reason || ''}</td>
+              <td class="py-2 px-4">${statusBadge(r.status)}</td>
+              <td class="py-2 px-4">${requested}</td>
+              <td class="py-2 px-4">${decided}</td>
+              <td class="py-2 px-4 whitespace-pre-wrap max-w-xs break-words">${r.remarks || ''}</td>
+            </tr>
+          `;
+        }).join('');
+        if (tbody) tbody.innerHTML = tr;
+      } catch (e) {
+        console.error(e);
+        if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-rose-600">Failed to load history</td></tr>`;
+      }
+    }
+
+    // ===== Alignment: refund panel height matches chart card =====
+    function syncRefundPanel() {
+      const chartCard = document.getElementById('chartCard');
+      const aside = document.getElementById('refundAside');
+      const header = document.getElementById('refundAsideHeader');
+      const scrollBox = document.getElementById('refundSidebarScroll');
+
+      if (!chartCard || !aside || !header || !scrollBox) return;
+
+      const isLarge = window.matchMedia('(min-width: 1024px)').matches;
+
+      aside.style.height = '';
+      scrollBox.style.height = '';
+
+      if (!isLarge) return;
+
+      const cardH = Math.round(chartCard.getBoundingClientRect().height);
+      if (cardH > 0) {
+        aside.style.height = cardH + 'px';
+
+        const cs = getComputedStyle(aside);
+        const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+        const headerH = Math.round(header.getBoundingClientRect().height);
+        const available = cardH - headerH - padY;
+
+        if (available > 80) {
+          scrollBox.style.height = available + 'px';
+        }
+      }
+    }
+
+    // ===== Open / Close child overlays WITHOUT hiding the refund modal =====
+    function openChildModal(childId) { show(document.getElementById(childId)); }
+    function closeApproveConfirmModal() { hide(document.getElementById('approveConfirmModal')); }
+    function closeRejectConfirmModal()  { hide(document.getElementById('rejectConfirmModal')); }
+
+
+    // ===== Actions (Approve / Reject / Void) =====
+    let targetRefundId = null;
+
+    async function onApproveRefund(id) {
+      targetRefundId = id;
+      const info = await getRefundInfo(id);
+      setText('approveMeta', `Ref # ${info.ref} — ${pesoFmt(info.amount)}`);
+      document.getElementById('approveRemarksInput').value = '';
+      openChildModal('approveConfirmModal'); // overlay only
+      setTimeout(() => document.getElementById('approveRemarksInput')?.focus(), 0);
+    }
+    async function onOpenReject(id) {
+      targetRefundId = id;
+      const info = await getRefundInfo(id);
+      setText('rejectMeta', `Ref # ${info.ref} — ${pesoFmt(info.amount)}`);
+      document.getElementById('rejectRemarksInput').value = '';
+      openChildModal('rejectConfirmModal');
+      setTimeout(() => document.getElementById('rejectRemarksInput')?.focus(), 0);
+    }
+
+
+    function updateRefundUI() {
+      renderRefundSidebar();
+      loadRefundPage(currentRefundPage);
+      if (!document.getElementById('refundHistoryModal')?.classList.contains('hidden')) {
+        loadRefundHistory();
+      }
+    }
+
+    async function approveRefund(id, remarks) {
+      try {
+        const res = await fetch(`${REFUND_API_BASE}/${id}/approve/`, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': csrftoken, 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ remarks: remarks || '' })
+        });
+        const data = await res.json().catch(()=> ({}));
+        if (!res.ok || !data.success) throw new Error(data.error || 'Approve failed.');
+        alert('Refund approved.');
+      } catch (e) {
+        console.error(e);
+        alert(e.message || 'Approve failed.');
+      }
+    }
+
+    async function rejectRefund(id, remarks) {
+      try {
+        if (!remarks) { throw new Error('Remarks are required to reject a refund.'); }
+        const res = await fetch(`${REFUND_API_BASE}/${id}/reject/`, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': csrftoken, 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ remarks })
+        });
+        const data = await res.json().catch(()=> ({}));
+        if (!res.ok || !data.success) throw new Error(data.error || 'Reject failed.');
+        alert('Refund rejected.');
+      } catch (e) {
+        console.error(e);
+        alert(e.message || 'Reject failed.');
+      }
+    }
+
+
+
+    // Wire up child modal confirm buttons
+    document.getElementById('approveConfirmBtn').addEventListener('click', async () => {
+      const remarks = (document.getElementById('approveRemarksInput')?.value || '').trim();
+      if (!targetRefundId) return;
+      await approveRefund(targetRefundId, remarks);
+      closeApproveConfirmModal();
+      updateRefundUI(); // will drop from active and appear in history
+    });
+    document.getElementById('rejectConfirmBtn').addEventListener('click', async () => {
+      const remarks = (document.getElementById('rejectRemarksInput')?.value || '').trim();
+      if (!targetRefundId) return;
+      await rejectRefund(targetRefundId, remarks);
+      closeRejectConfirmModal();
+      updateRefundUI(); // will drop from active and appear in history
+    });
+
+
+    // Wire up after paint
+    window.addEventListener('load', () => {
+      renderRefundSidebar();
+      // Initial alignment
+      syncRefundPanel();
+
+      // Fallback retries as Chart.js animates
+      setTimeout(syncRefundPanel, 150);
+      setTimeout(syncRefundPanel, 400);
+
+      // Keep aligned on resize/orientation
+      window.addEventListener('resize', syncRefundPanel);
+
+      // React to chart canvas size changes precisely
+      const canvas = document.getElementById('totalDailyChart');
+      if (window.ResizeObserver && canvas) {
+        const ro = new ResizeObserver(() => syncRefundPanel());
+        ro.observe(canvas);
+      }
+
+      document.getElementById('refundViewAllBtn')?.addEventListener('click', openRefundModal);
+      document.getElementById('refundPrevBtn')?.addEventListener('click', () => loadRefundPage(currentRefundPage - 1));
+      document.getElementById('refundNextBtn')?.addEventListener('click', () => loadRefundPage(currentRefundPage + 1));
+    });
+  </script>
+
+  <!-- ===== Sales Report (API-powered) scripts (UPDATED) ===== -->
+  <script>
+    const pesoSales = (v) =>
+      '₱ ' + Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+    let _salesChart;
+    let _weeklyAnchor = new Date(); // anchor month for weekly pager
+
+    function openSalesModal() {
+      const modal = document.getElementById('salesReportModal');
+      if (!modal) return;
+      modal.classList.remove('hidden');
+
+      // Default to MONTHLY: Jan 1 → Dec 31 of current year
+      const now = new Date();
+      const start = new Date(now.getFullYear(), 0, 1);
+      const end   = new Date(now.getFullYear(), 11, 31);
+
+      const fmt = (d) => d.toISOString().slice(0, 10);
+      document.getElementById('salesFrom').value = fmt(start);
+      document.getElementById('salesTo').value   = fmt(end);
+      document.getElementById('salesGroup').value = 'monthly';
+
+      document.getElementById('weeklyPager').classList.add('hidden');
+      
+      // Enable export button when dates are set
+      const exportBtn = document.getElementById('salesExportPdfBtn');
+      if (exportBtn) exportBtn.disabled = false;
+      
+      loadSalesReport();
+    }
+    function closeSalesModal() {
+      document.getElementById('salesReportModal')?.classList.add('hidden');
+    }
+
+    // Toggle weekly month pager visibility and auto-fill dates
+    function syncWeeklyPagerVisibility() {
+      const grp = document.getElementById('salesGroup').value;
+      const pager = document.getElementById('weeklyPager');
+      if (grp === 'weekly' || grp === 'daily') {
+        pager.classList.remove('hidden');
+        // align date range to anchor month
+        const y = _weeklyAnchor.getFullYear();
+        const m = _weeklyAnchor.getMonth();
+        const first = new Date(y, m, 1);
+        const last = new Date(y, m + 1, 0);
+        const fmt = (d) => {
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        };
+        document.getElementById('salesFrom').value = fmt(first);
+        document.getElementById('salesTo').value = fmt(last);
+        document.getElementById('weekMonthLabel').textContent =
+          first.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      } else {
+        pager.classList.add('hidden');
+      }
+    }
+
+    // Function to set the weekly anchor to a specific month
+    function setWeeklyAnchorToMonth(year, month) {
+      _weeklyAnchor = new Date(year, month, 1);
+      syncWeeklyPagerVisibility();
+    }
+
+    document.getElementById('openSalesFromChartBtn')?.addEventListener('click', openSalesModal);
+    document.getElementById('salesApplyBtn')?.addEventListener('click', loadSalesReport);
+    document.getElementById('salesExportPdfBtn')?.addEventListener('click', exportSalesReportPDF);
+    
+    // Add event listeners for date inputs to enable/disable export button
+    document.getElementById('salesFrom')?.addEventListener('change', updateExportButtonState);
+    document.getElementById('salesTo')?.addEventListener('change', updateExportButtonState);
+    
+    function updateExportButtonState() {
+      const exportBtn = document.getElementById('salesExportPdfBtn');
+      const fromDate = document.getElementById('salesFrom').value;
+      const toDate = document.getElementById('salesTo').value;
+      if (exportBtn) {
+        exportBtn.disabled = !fromDate || !toDate;
+      }
+    }
+
+    document.getElementById('salesGroup')?.addEventListener('change', () => {
+      const grp = document.getElementById('salesGroup').value;
+      if (grp === 'yearly') {
+        // default 5-year window if fields are blank
+        const now = new Date();
+        const start = new Date(now.getFullYear() - 4, 0, 1);
+        const end   = new Date(now.getFullYear(), 11, 31);
+        const fmt = (d) => d.toISOString().slice(0, 10);
+        if (!document.getElementById('salesFrom').value) document.getElementById('salesFrom').value = fmt(start);
+        if (!document.getElementById('salesTo').value)   document.getElementById('salesTo').value   = fmt(end);
+      }
+      if (grp === 'monthly') {
+        // default current year if fields blank
+        const now = new Date();
+        const start = new Date(now.getFullYear(), 0, 1);
+        const end   = new Date(now.getFullYear(), 11, 31);
+        const fmt = (d) => d.toISOString().slice(0, 10);
+        if (!document.getElementById('salesFrom').value) document.getElementById('salesFrom').value = fmt(start);
+        if (!document.getElementById('salesTo').value)   document.getElementById('salesTo').value   = fmt(end);
+      }
+      if (grp === 'weekly') {
+        _weeklyAnchor = new Date(); // reset to current month
+      }
+      if (grp === 'daily') {
+        _weeklyAnchor = new Date(); // reset to current month
+        // Ensure we're showing the current month for daily view
+        const now = new Date();
+        _weeklyAnchor = new Date(now.getFullYear(), now.getMonth(), 1);
+      }
+      syncWeeklyPagerVisibility();
+      loadSalesReport();
+    });
+
+    // Weekly month pager handlers
+    document.getElementById('weekPrevMonth')?.addEventListener('click', () => {
+      const currentMonth = _weeklyAnchor.getMonth();
+      const currentYear = _weeklyAnchor.getFullYear();
+      _weeklyAnchor = new Date(currentYear, currentMonth - 1, 1);
+      syncWeeklyPagerVisibility();
+      loadSalesReport();
+    });
+    document.getElementById('weekNextMonth')?.addEventListener('click', () => {
+      const currentMonth = _weeklyAnchor.getMonth();
+      const currentYear = _weeklyAnchor.getFullYear();
+      _weeklyAnchor = new Date(currentYear, currentMonth + 1, 1);
+      syncWeeklyPagerVisibility();
+      loadSalesReport();
+    });
+
+    // Format monthly labels from "2025-01" to "Jan 2025"
+    function formatMonthlyLabels(labels, groupBy) {
+      if (groupBy !== 'monthly') return labels;
+      
+      return labels.map(label => {
+        // Check if label matches YYYY-MM format
+        const match = label.match(/^(\d{4})-(\d{2})$/);
+        if (match) {
+          const year = match[1];
+          const month = parseInt(match[2]) - 1; // Convert to 0-based month
+          const date = new Date(year, month);
+          return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        }
+        return label; // Return original if not in expected format
+      });
+    }
+
+    async function loadSalesReport() {
+      const from = document.getElementById('salesFrom').value;
+      const to   = document.getElementById('salesTo').value;
+      const grp  = document.getElementById('salesGroup').value; // weekly | monthly | yearly
+
+      const params = new URLSearchParams({ date_from: from, date_to: to, group_by: grp });
+      const url = `/api/earnings/sales_report/?${params.toString()}`;
+
+      let payload;
+      try {
+        const res = await fetch(url, { credentials: 'same-origin' });
+        payload = await res.json();
+        if (!res.ok || !payload?.success) {
+          throw new Error(payload?.error || 'Failed to load sales report');
+        }
+      } catch (e) {
+        console.error(e);
+        alert(e.message || 'Failed to load sales report');
+        return;
+      }
+
+      const d = payload.data || {};
+      const rawLabels = d.labels || [];
+      const labels = formatMonthlyLabels(rawLabels, grp);
+      const salesArr = (d.sales || []).map(Number);
+      const booksArr = (d.bookings || []).map(Number);
+      const avgArr   = (d.avg || []).map(Number);
+      const cancArr  = (d.cancellations || []).map(Number);
+      const cancAmt  = (d.cancellations_amount || []).map(Number);
+
+      // Summary
+      document.getElementById('salesTotal').textContent    = pesoSales(d.total_sales || 0);
+      document.getElementById('salesBookings').textContent = Number(d.total_bookings || 0).toLocaleString();
+      document.getElementById('salesAvg').textContent      = pesoSales(d.total_bookings ? (d.total_sales / d.total_bookings) : 0);
+      document.getElementById('salesCancels').textContent  =
+        `${Number(d.total_cancellations || 0).toLocaleString()} (${pesoSales(d.total_cancellations_amount || 0)})`;
+
+      // Chart
+      const ctx = document.getElementById('salesChart');
+      if (_salesChart) _salesChart.destroy();
+
+      // soft gradient for primary line
+      const g = ctx.getContext('2d').createLinearGradient(0, 0, 0, ctx.offsetHeight || 300);
+      g.addColorStop(0, 'rgba(109,41,50,0.25)');
+      g.addColorStop(1, 'rgba(109,41,50,0.03)');
+
+      _salesChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Sales (₱)',
+              data: salesArr,
+              borderColor: '#6d2932',
+              backgroundColor: g,
+              tension: 0.35,
+              fill: true,
+              borderWidth: 2,
+              pointRadius: 0,
+              pointHitRadius: 12
+            },
+            {
+              label: 'Avg / Booking (₱)',
+              data: avgArr,
+              borderColor: '#2a9d8f',
+              backgroundColor: 'rgba(42,157,143,0.10)',
+              tension: 0.35,
+              yAxisID: 'y1',
+              fill: false,
+              borderWidth: 2,
+              pointRadius: 0,
+              pointHitRadius: 12
+            },
+            {
+              type: 'bar',
+              label: 'Cancellations (count)',
+              data: cancArr,
+              yAxisID: 'y2',
+              borderColor: 'rgba(185,28,28,0.45)',
+              backgroundColor: 'rgba(185,28,28,0.18)',
+              borderWidth: 1,
+              borderRadius: 6,
+              maxBarThickness: 18
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: 8 },
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: { usePointStyle: true, boxWidth: 8 }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(0,0,0,0.8)',
+              borderWidth: 0,
+              displayColors: false,
+              callbacks: {
+                label: (c) => {
+                  const idx = c.dataIndex;
+                  if (c.dataset.label.includes('Sales')) {
+                    return `${c.dataset.label}: ${pesoSales(c.parsed.y || 0)}`;
+                  }
+                  if (c.dataset.label.includes('Avg')) {
+                    return `${c.dataset.label}: ${pesoSales(c.parsed.y || 0)}`;
+                  }
+                  if (c.dataset.label.includes('Cancellations')) {
+                    return `${c.dataset.label}: ${Number(c.parsed.y || 0).toLocaleString()} (lost ${pesoSales(cancAmt[idx] || 0)})`;
+                  }
+                  return `${c.dataset.label}: ${c.parsed.y}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 14 },
+              grid: { color: 'rgba(0,0,0,0.04)', borderColor: 'rgba(0,0,0,0.1)' }
+            },
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: 'Sales (₱)' },
+              ticks: { callback: (v) => '₱ ' + Number(v).toLocaleString() },
+              grid: { color: 'rgba(0,0,0,0.05)', borderColor: 'rgba(0,0,0,0.1)' }
+            },
+            y1: {
+              beginAtZero: true,
+              position: 'right',
+              grid: { drawOnChartArea: false },
+              title: { display: true, text: 'Avg / Booking (₱)' },
+              ticks: { callback: (v) => '₱ ' + Number(v).toLocaleString() }
+            },
+            y2: {
+              beginAtZero: true,
+              position: 'right',
+              grid: { drawOnChartArea: false },
+              title: { display: true, text: 'Cancellations (count)' }
+            }
+          }
+        }
+      });
+
+      // Table
+      const tbody = document.getElementById('salesTableBody');
+      if (!labels.length) {
+        tbody.innerHTML = '<tr><td class="px-3 py-3 text-center text-gray-500" colspan="6">No data</td></tr>';
+      } else {
+        tbody.innerHTML = labels.map((lbl, i) => `
+          <tr class="border-t">
+            <td class="px-3 py-2">${lbl}</td>
+            <td class="px-3 py-2 text-right">${pesoSales(salesArr[i] || 0)}</td>
+            <td class="px-3 py-2 text-right">${Number(booksArr[i] || 0).toLocaleString()}</td>
+            <td class="px-3 py-2 text-right">${pesoSales(avgArr[i] || 0)}</td>
+            <td class="px-3 py-2 text-right">${Number(cancArr[i] || 0).toLocaleString()}</td>
+            <td class="px-3 py-2 text-right">${pesoSales(cancAmt[i] || 0)}</td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    (function () {
+      const scrollEl = document.getElementById('salesScroll');
+      const header = document.getElementById('salesHeader');
+      if (!scrollEl || !header) return;
+      const toggleShadow = () => {
+        const scrolled = scrollEl.scrollTop > 2;
+        header.classList.toggle('shadow-sm', scrolled);
+        header.classList.toggle('ring-1', scrolled);
+        header.classList.toggle('ring-[#561c24]/10', scrolled);
+      };
+      scrollEl.addEventListener('scroll', toggleShadow);
+      // run once
+      setTimeout(toggleShadow, 0);
+    })();
+    
+    // Export Sales Report PDF function
+    function exportSalesReportPDF() {
+      const from = document.getElementById('salesFrom').value;
+      const to = document.getElementById('salesTo').value;
+      const groupBy = document.getElementById('salesGroup').value;
+      
+      if (!from || !to) {
+        alert('Please select both From and To dates before exporting.');
+        return;
+      }
+      
+      // Build URL with parameters
+      const params = new URLSearchParams({
+        date_from: from,
+        date_to: to,
+        group_by: groupBy
+      });
+      
+      const url = `/earningsAndshares/export_earnings_pdf/?${params.toString()}`;
+      window.open(url, '_blank');
+    }
+  </script>
+  <script>
+
+    // ── Earnings ↔ Sidebar badge bridge ──────────────────────────────
+    function computePendingPayoutCount() {
+      const tbody = document.querySelector('#pendingContent tbody');
+      if (!tbody) return 0;
+      return tbody.querySelectorAll('tr[data-payout-id]').length;
+    }
+
+    function updateEarningsBadge() {
+      const count = computePendingPayoutCount();
+      if (typeof window.setEarningsBadgeCount === 'function') {
+        window.setEarningsBadgeCount(count);
+      } else {
+        // Fallback if sidebar helper isn't present for some reason
+        const badge = document.getElementById('earningsBadge');
+        if (!badge) return;
+        badge.textContent = count > 99 ? '99+' : String(count);
+        badge.style.display = count > 0 ? 'inline-flex' : 'none';
+        badge.classList.toggle('hidden', count <= 0);
+      }
+    }
+
+    // Initial sync on load
+    document.addEventListener('DOMContentLoaded', updateEarningsBadge);
+
+    // Auto-sync if rows change (e.g., other scripts modify the table)
+    (function observePendingTable() {
+      const pendingTbody = document.querySelector('#pendingContent tbody');
+      if (!pendingTbody || !('MutationObserver' in window)) return;
+      const mo = new MutationObserver(() => updateEarningsBadge());
+      mo.observe(pendingTbody, { childList: true });
+    })();
+  </script>
+</body>
+</html>

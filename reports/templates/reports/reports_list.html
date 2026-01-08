@@ -1,0 +1,269 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reports Management</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css">
+</head>
+<body class="p-0 md:p-4 ml-5 bg-gray-50">
+  {% include 'base.html' %}
+
+  <div class="flex flex-col md:ml-64 p-4 md:p-6">
+    <div class="bg-white rounded-none md:rounded-2xl border border-[#531B24] w-full overflow-hidden">
+
+      <div class="px-4 md:px-6 pt-4 md:pt-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h2 class="text-2xl md:text-3xl font-semibold tracking-tight text-[#531B24]">Reports Management</h2>
+            <p class="text-sm text-[#531B24] opacity-70">System reports & issues</p>
+          </div>
+
+          <div class="w-full md:w-auto flex flex-col sm:flex-row gap-2 sm:items-center">
+            <div class="text-sm">
+              <select id="statusFilter" onchange="filterReports()"
+                class="pl-3 pr-8 h-8 rounded-xl border border-[#531B24] text-gray-700 focus:outline-none focus:ring-1 focus:ring-[#531B24] bg-white">
+                <option value="">All Status</option>
+                <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                <option value="investigating" {% if status_filter == 'investigating' %}selected{% endif %}>Investigating</option>
+                <option value="resolved" {% if status_filter == 'resolved' %}selected{% endif %}>Resolved</option>
+                <option value="dismissed" {% if status_filter == 'dismissed' %}selected{% endif %}>Dismissed</option>
+              </select>
+            </div>
+            <div class="text-sm">
+              <select id="typeFilter" onchange="filterReports()"
+                class="pl-3 pr-8 h-8 rounded-xl border border-[#531B24] text-gray-700 focus:outline-none focus:ring-1 focus:ring-[#531B24] bg-white">
+                <option value="">All Types</option>
+                <option value="driver_cancellation" {% if type_filter == 'driver_cancellation' %}selected{% endif %}>Driver Cancellations</option>
+                <option value="tourist_complaint" {% if type_filter == 'tourist_complaint' %}selected{% endif %}>Tourist Complaints</option>
+                <option value="driver_complaint" {% if type_filter == 'driver_complaint' %}selected{% endif %}>Driver Complaints</option>
+                <option value="system_issue" {% if type_filter == 'system_issue' %}selected{% endif %}>System Issues</option>
+                <option value="verification_fraud" {% if type_filter == 'verification_fraud' %}selected{% endif %}>Verification Fraud</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-4 md:px-6">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+          <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+            <p class="text-sm text-blue-600">Total Reports</p>
+            <p class="text-2xl font-bold text-blue-800">{{ stats.total }}</p>
+          </div>
+          <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-center">
+            <p class="text-sm text-yellow-600">Pending</p>
+            <p class="text-2xl font-bold text-yellow-800">{{ stats.pending }}</p>
+          </div>
+          <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+            <p class="text-sm text-blue-600">Investigating</p>
+            <p class="text-2xl font-bold text-blue-800">{{ stats.investigating }}</p>
+          </div>
+          <div class="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+            <p class="text-sm text-green-600">Resolved</p>
+            <p class="text-2xl font-bold text-green-800">{{ stats.resolved }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-4 md:px-6 pb-4 md:pb-6">
+        {% if error %}
+          <div class="bg-red-50 border border-red-200 rounded-lg p-4 mt-4">
+            <p class="text-red-800">{{ error }}</p>
+          </div>
+        {% endif %}
+
+        <div class="rounded-xl mt-4 text-sm">
+          <div class="border border-gray-200 rounded-xl overflow-hidden">
+            <table class="w-full" id="reportsTable">
+              <thead class="bg-gray-100">
+                <tr class="text-gray-600 text-xs uppercase tracking-wide">
+                  <th class="px-4 py-3 text-left">ID</th>
+                  <th class="px-4 py-3 text-left">Type</th>
+                  <th class="px-4 py-3 text-left">Title</th>
+                  <th class="px-4 py-3 text-left">Reporter</th>
+                  <th class="px-4 py-3 text-left">Status</th>
+                  <th class="px-4 py-3 text-left">Priority</th>
+                  <th class="px-4 py-3 text-left">Created</th>
+                  <th class="px-4 py-3 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-100">
+                {% for report in reports %}
+                <tr class="hover:bg-gray-50 transition" data-status="{{ report.status }}" data-type="{{ report.report_type }}">
+                  <td class="px-4 py-3 text-gray-700">{{ report.id|slice:":8" }}...</td>
+                  <td class="px-4 py-3">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                      {% if report.report_type == 'driver_cancellation' %}
+                        <i class="fas fa-car-crash mr-1 text-orange-600"></i>Driver Cancellation
+                        {% if report.status == 'pending' %}
+                          <span class="ml-1 inline-flex items-center px-1 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>Review Needed
+                          </span>
+                        {% endif %}
+                      {% elif report.report_type == 'tourist_complaint' %}Tourist Complaint
+                      {% elif report.report_type == 'driver_complaint' %}Driver Complaint
+                      {% elif report.report_type == 'system_issue' %}System Issue
+                      {% elif report.report_type == 'verification_fraud' %}Verification Fraud
+                      {% else %}{{ report.report_type|title }}{% endif %}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-gray-800 font-medium">{{ report.title }}</td>
+                  <td class="px-4 py-3 text-gray-700">{{ report.reporter_type|title }}</td>
+                  <td class="px-4 py-3">
+                    {% if report.status == 'pending' %}
+                      {% if report.report_type == 'driver_cancellation' %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                          <i class="fas fa-gavel mr-1 text-red-600"></i> Needs Review
+                        </span>
+                      {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                          <i class="fas fa-clock mr-1 text-yellow-600"></i> Pending
+                        </span>
+                      {% endif %}
+                    {% elif report.status == 'investigating' %}
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <i class="fas fa-search mr-1 text-blue-600"></i> Investigating
+                      </span>
+                    {% elif report.status == 'resolved' %}
+                      {% if report.report_type == 'driver_cancellation' %}
+                        {% if report.decision == 'justified' %}
+                          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <i class="fas fa-check mr-1 text-green-600"></i> Justified
+                          </span>
+                        {% elif report.decision == 'unjustified' %}
+                          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                            <i class="fas fa-exclamation mr-1 text-orange-600"></i> Unjustified
+                          </span>
+                        {% else %}
+                          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <i class="fas fa-check mr-1 text-green-600"></i> Resolved
+                          </span>
+                        {% endif %}
+                      {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <i class="fas fa-check mr-1 text-green-600"></i> Resolved
+                        </span>
+                      {% endif %}
+                    {% elif report.status == 'dismissed' %}
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        <i class="fas fa-times mr-1 text-gray-600"></i> Dismissed
+                      </span>
+                    {% endif %}
+                  </td>
+                  <td class="px-4 py-3">
+                    {% if report.priority == 'critical' %}
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        <i class="fas fa-exclamation-triangle mr-1 text-red-600"></i> Critical
+                      </span>
+                    {% elif report.priority == 'high' %}
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                        <i class="fas fa-exclamation mr-1 text-orange-600"></i> High
+                      </span>
+                    {% elif report.priority == 'medium' %}
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <i class="fas fa-info mr-1 text-blue-600"></i> Medium
+                      </span>
+                    {% else %}
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        <i class="fas fa-minus mr-1 text-gray-600"></i> Low
+                      </span>
+                    {% endif %}
+                  </td>
+                  <td class="px-4 py-3 text-gray-700">{{ report.created_at|date:"M d, Y H:i" }}</td>
+                  <td class="px-4 py-3">
+                    <div class="flex items-center justify-center">
+                      <a href="{% url 'report_detail' report.id %}" 
+                         class="inline-flex items-center justify-center text-gray-600 hover:text-[#531B24] focus:outline-none"
+                         title="View details">
+                        <i class="fas fa-eye"></i>
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="8" class="px-4 py-8 text-center">
+                    <div class="flex flex-col items-center justify-center text-gray-500">
+                      <i class="fas fa-clipboard-list text-3xl mb-2"></i>
+                      <p class="font-medium">No reports found.</p>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Pagination -->
+        {% if reports.has_other_pages %}
+        <div class="flex items-center justify-between mt-6">
+          <div class="text-sm text-gray-700">
+            Showing {{ reports.start_index }} to {{ reports.end_index }} of {{ reports.paginator.count }} reports
+          </div>
+          <div class="flex items-center space-x-2">
+            {% if reports.has_previous %}
+              <a href="?page=1{% if status_filter %}&status={{ status_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}" class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                <i class="fas fa-angle-double-left"></i>
+              </a>
+              <a href="?page={{ reports.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}" class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                <i class="fas fa-angle-left"></i>
+              </a>
+            {% endif %}
+            
+            {% for num in reports.paginator.page_range %}
+              {% if reports.number == num %}
+                <span class="px-3 py-2 text-sm font-medium text-white bg-[#531B24] border border-[#531B24] rounded-md">
+                  {{ num }}
+                </span>
+              {% elif num > reports.number|add:'-3' and num < reports.number|add:'3' %}
+                <a href="?page={{ num }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}" class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                  {{ num }}
+                </a>
+              {% endif %}
+            {% endfor %}
+            
+            {% if reports.has_next %}
+              <a href="?page={{ reports.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}" class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                <i class="fas fa-angle-right"></i>
+              </a>
+              <a href="?page={{ reports.paginator.num_pages }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}" class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                <i class="fas fa-angle-double-right"></i>
+              </a>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <script src="{% static 'js/sidebar.js' %}"></script>
+  <script>
+    function filterReports() {
+      const statusFilter = document.getElementById('statusFilter').value;
+      const typeFilter = document.getElementById('typeFilter').value;
+      
+      // Build URL with filters
+      const url = new URL(window.location);
+      if (statusFilter) {
+        url.searchParams.set('status', statusFilter);
+      } else {
+        url.searchParams.delete('status');
+      }
+      
+      if (typeFilter) {
+        url.searchParams.set('type', typeFilter);
+      } else {
+        url.searchParams.delete('type');
+      }
+      
+      url.searchParams.delete('page'); // Reset to first page when filtering
+      window.location.href = url.toString();
+    }
+  </script>
+</body>
+</html>

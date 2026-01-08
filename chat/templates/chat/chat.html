@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Chat Support - TarTrack{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/chat.css' %}">
+{% endblock extra_css %}
+
+{% block content %}
+<!-- Main Content -->
+    <main class="ml-[280px] min-h-screen bg-[#f5f5f5] text-[#561c24] font-sans">
+        <div class="h-screen flex flex-col"> <!-- Added opening div tag -->
+            <!-- Header -->
+            {% include "chat/components/chat_header.html" %}
+
+            <!-- Chat Container -->
+            <div class="flex-1 flex overflow-hidden">
+                <!-- Chat List Sidebar -->
+                {% include "chat/components/chat_sidebar.html" %}
+
+                <!-- Chat Messages Area -->
+                {% include "chat/components/chat_messages.html" %}
+            </div>
+        </div>
+    </main>
+    <!-- New Chat Modal -->
+    {% include "chat/components/new_chat_modal.html" %}
+{% endblock content %}
+
+{% block extra_js %}
+    <script>
+        window.adminUserId = "{{ admin_user_id|escapejs }}";
+        console.log("Admin User ID:", window.adminUserId); // Add this for debugging
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="{% static 'js/chat/config/supabase_config.js' %}"></script>
+    <script src="{% static 'js/chat/conversations/conversation_loader.js' %}"></script>
+    <script src="{% static 'js/chat/conversations/conversation_ui.js' %}"></script>
+    <script src="{% static 'js/chat/conversations/conversation_realtime.js' %}"></script>
+    <script src="{% static 'js/chat/search/chat_search.js' %}"></script>
+    <script src="{% static 'js/chat/filters/tab_filters.js' %}"></script>
+    <script src="{% static 'js/chat/modal/chat_modal.js' %}"></script>
+    <script src="{% static 'js/chat/modal/user_fetching.js' %}"></script>
+    <script src="{% static 'js/chat/messages/messages_loader.js' %}"></script>
+    <script src="{% static 'js/chat/messages/messages_sender.js' %}"></script>
+    <script src="{% static 'js/chat/messages/messages_realtime.js' %}"></script>
+{% endblock extra_js %}

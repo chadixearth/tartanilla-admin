@@ -1,0 +1,181 @@
+{% load static %}
+
+<div class="sidebar">
+  <div class="sidebar-content">
+    <!-- Logo Section -->
+    <div class="sidebar-header">
+      <img src="{% static 'img/tartrack_whitel.png' %}" alt="Tartanilla Logo" class="sidebar-logo" />
+      <span class="sidebar-subtitle">Cebu Tartanilla Online</span>
+      <span class="sidebar-subtitle">Booking</span>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="sidebar-nav">
+      <ul class="nav-list">
+        <li class="nav-item" data-page="dashboard">
+          <a href="{% url 'accounts:dashboard' %}" class="nav-link">
+            <div class="nav-content">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
+                <path d="M3 9L12 2L21 9V20C21 21.1 20.1 22 19 22H5C3.9 22 3 21.1 3 20V9Z" stroke="currentColor" stroke-width="2" fill="none"/>
+              </svg>
+              <span class="nav-text">Dashboard</span>
+            </div>
+          </a>
+        </li>
+
+        <!-- Users Dropdown -->
+        <li class="nav-item">
+          <div onclick="toggleDropdown(this)" class="nav-link flex items-center justify-between cursor-pointer">
+            <div class="flex items-center space-x-2">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
+                <circle cx="9" cy="7" r="3" stroke="currentColor" stroke-width="2"/>
+                <circle cx="17" cy="7" r="3" stroke="currentColor" stroke-width="2"/>
+                <path d="M2 21v-2c0-2.2 3.6-4 8-4s8 1.8 8 4v2" stroke="currentColor" stroke-width="2"/>
+                <path d="M14 21v-2c0-1.5 1.8-2.8 4-3" stroke="currentColor" stroke-width="2"/>
+              </svg>
+              <span class="nav-text">Users</span>
+            </div>
+            <svg class="w-4 h-4 transition-transform duration-200" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M7.41 8.59L12 13.17L16.59 8.59L18 10L12 16L6 10L7.41 8.59Z"/>
+            </svg>
+          </div>
+          <ul class="dropdown-items hidden mt-2 ml-6 border-l-2 border-white pl-4 space-y-2">
+            <li class="flex items-center gap-2">
+              <a href="{% url 'accounts:listOfCustomers' %}" class="dropdown-link text-white">Customer</a>
+            </li>
+            <li class="flex items-center gap-2">
+              <a href="{% url 'accounts:driver_profile' %}" class="dropdown-link text-white">Driver</a>
+            </li>
+            <li class="flex items-center gap-2">
+              <a href="{% url 'accounts:listOfOwners' %}" class="dropdown-link text-white">Owner</a>
+            </li>
+          </ul>
+        </li>
+
+        <!-- Other navigation items -->
+        <li class="nav-item">
+          <a href="#" class="nav-link">
+            <div class="nav-content">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
+                <path d="M21 10C21 16.667 12 23 12 23S3 16.667 3 10C3 5.582 7.029 2 12 2S21 5.582 21 10Z" stroke="currentColor" stroke-width="2"/>
+                <circle cx="12" cy="10" r="3" stroke="currentColor" stroke-width="2"/>
+              </svg>
+              <span class="nav-text">Route Management</span>
+            </div>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a href="#" class="nav-link">
+            <div class="nav-content">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
+                <ellipse cx="12" cy="6" rx="8" ry="3" stroke="currentColor" stroke-width="2"/>
+                <path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6" stroke="currentColor" stroke-width="2"/>
+                <path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" stroke="currentColor" stroke-width="2"/>
+              </svg>
+              <span class="nav-text">Earnings & Shares</span>
+            </div>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a href="{% url 'chat_view' %}" class="nav-link">
+            <div class="nav-content">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
+                <path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z" stroke="currentColor" stroke-width="2"/>
+              </svg>
+              <span class="nav-text">Chats</span>
+            </div>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a href="#" class="nav-link">
+            <div class="nav-content">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
+                <path d="M21 16V8C21 6.9 20.1 6 19 6H5C3.9 6 3 6.9 3 8V16C3 17.1 3.9 18 5 18H19C20.1 18 21 17.1 21 16Z" stroke="currentColor" stroke-width="2"/>
+                <path d="M7 6V4C7 2.9 7.9 2 9 2H15C16.1 2 17 2.9 17 4V6" stroke="currentColor" stroke-width="2"/>
+              </svg>
+              <span class="nav-text">Tour Package</span>
+            </div>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a href="#" class="nav-link">
+            <div class="nav-content">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
+                <path d="M16 4H18C19.1 4 20 4.9 20 6V18C20 19.1 19.1 20 18 20H6C4.9 20 4 19.1 4 18V6C4 4.9 4.9 4 6 4H8" stroke="currentColor" stroke-width="2"/>
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" stroke="currentColor" stroke-width="2"/>
+              </svg>
+              <span class="nav-text">Booking</span>
+            </div>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a href="#" class="nav-link">
+            <div class="nav-content">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
+                <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="currentColor" stroke-width="2"/>
+                <polyline points="14,2 14,8 20,8" stroke="currentColor" stroke-width="2"/>
+                <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2"/>
+                <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2"/>
+                <polyline points="10,9 9,9 8,9" stroke="currentColor" stroke-width="2"/>
+              </svg>
+              <span class="nav-text">Audit Logs</span>
+            </div>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a href="{% url 'accounts:pendingRegistration' %}" class="nav-link">
+            <div class="nav-content">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                <polyline points="12,6 12,12 16,14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span class="nav-text">Pending Registration</span>
+            </div>
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+
+  <!-- Footer with admin email -->
+  <div class="sidebar-footer">
+    <div class="admin-section">
+      <div class="admin-info cursor-pointer">
+        <svg class="admin-icon" viewBox="0 0 24 24" fill="none">
+          <path d="M20 21V19C20 17.9 19.1 17 18 17H6C4.9 17 4 17.9 4 19V21" stroke="currentColor" stroke-width="2"/>
+          <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"/>
+        </svg>
+        <span class="admin-text">
+          {% if request.user.is_authenticated and request.user.email %}
+            {{ request.user.email }}
+          {% elif request.user.is_authenticated %}
+            {{ request.user.get_username|default:request.user.username }}
+          {% else %}
+            Admin
+          {% endif %}
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JS -->
+<script>
+  function toggleDropdown(trigger) {
+    const ul = trigger.nextElementSibling;
+    const arrow = trigger.querySelector('svg:last-child');
+    if (ul.classList.contains('hidden')) {
+      ul.classList.remove('hidden');
+      arrow.classList.add('rotate-180');
+    } else {
+      ul.classList.add('hidden');
+      arrow.classList.remove('rotate-180');
+    }
+  }
+</script>

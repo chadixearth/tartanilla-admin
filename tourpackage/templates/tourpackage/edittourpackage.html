@@ -1,0 +1,1667 @@
+{% extends 'base.html' %}
+{% block title %}Edit Tour Package - TarTrack{% endblock %}
+
+{% block extra_css %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
+      crossorigin=""/>
+
+<!-- Flatpickr CSS for calendar picker -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
+<style>
+    .map-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .map-modal.active {
+        display: flex;
+    }
+    
+    .map-modal-content {
+        background: white;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 800px;
+        height: 80%;
+        max-height: 600px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .map-modal-header {
+        background: #531B24;
+        color: white;
+        padding: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .map-modal-title {
+        font-size: 18px;
+        font-weight: 600;
+    }
+    
+    .map-modal-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: background-color 0.2s;
+    }
+    
+    .map-modal-close:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+    
+    .map-container {
+        height: calc(100% - 60px);
+        position: relative;
+    }
+    
+    #dropoffMap {
+        height: 100%;
+        width: 100%;
+        min-height: 400px;
+    }
+    
+    #pickupMap {
+        height: 100%;
+        width: 100%;
+        min-height: 400px;
+    }
+    
+    .map-controls {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        padding: 10px;
+        z-index: 1000;
+        max-width: 250px;
+    }
+    
+    .map-controls h4 {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: #531B24;
+    }
+    
+    .terminal-list {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #e5e5e5;
+        border-radius: 4px;
+        background: #f9f9f9;
+    }
+    
+    .terminal-item {
+        padding: 8px 12px;
+        border-bottom: 1px solid #e5e5e5;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        font-size: 13px;
+    }
+    
+    .terminal-item:hover {
+        background: #e9ecef;
+    }
+    
+    .terminal-item.selected {
+        background: #531B24;
+        color: white;
+    }
+    
+    .terminal-item:last-child {
+        border-bottom: none;
+    }
+    
+    .map-actions {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        display: flex;
+        gap: 10px;
+        z-index: 1000;
+    }
+    
+    .map-btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .map-btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+    
+    .map-btn-secondary:hover {
+        background: #5a6268;
+    }
+    
+    .map-btn-primary {
+        background: #531B24;
+        color: white;
+    }
+    
+    .map-btn-primary:hover {
+        background: #6d2d37;
+    }
+    
+    .location-display {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 8px 12px;
+        margin-top: 8px;
+        font-size: 13px;
+        color: #495057;
+    }
+    
+    .location-display.has-location {
+        background: #d4edda;
+        border-color: #c3e6cb;
+        color: #155724;
+    }
+    
+    /* Ensure map markers are visible */
+    .terminal-marker {
+        z-index: 1000 !important;
+    }
+    
+    .selected-terminal-marker {
+        z-index: 1001 !important;
+    }
+    
+    .custom-marker {
+        z-index: 1002 !important;
+    }
+    
+    /* Debug styles for map container */
+    #pickupMap {
+        min-height: 400px !important;
+        background: #f0f0f0;
+    }
+    
+    #dropoffMap {
+        min-height: 400px !important;
+        background: #f0f0f0;
+    }
+    
+    /* Calendar picker styles */
+    .flatpickr-calendar {
+        font-family: inherit;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .flatpickr-day.selected {
+        background: #531B24;
+        border-color: #531B24;
+    }
+    
+    .flatpickr-day.selected:hover {
+        background: #6d2d37;
+        border-color: #6d2d37;
+    }
+    
+    /* Photo upload styles */
+    .photo-preview {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 10px;
+    }
+    
+    .photo-item {
+        position: relative;
+        width: 100px;
+        height: 100px;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 2px solid #e5e5e5;
+    }
+    
+    .photo-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .photo-remove {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        font-size: 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .photo-remove:hover {
+        background: rgba(220, 53, 69, 0.9);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="p-4 md:p-6">
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-semibold mb-6 text-primary-dark">Edit Tour Package</h2>
+
+            <form method="post" enctype="multipart/form-data" class="space-y-5" id="packageForm" onsubmit="return false;">
+                {% csrf_token %}
+                <div class="flex gap-6">
+                    <!-- Left content -->
+                    <div class="flex-1 min-w-0">
+                        <!-- Section title -->
+                        <h6 class="font-semibold text-sm text-gray-500 mb-3">Basic Package Information</h6>
+
+                        <!-- Image Upload Box -->
+                        <div class="flex flex-col items-start py-4 w-full">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Photos</label>
+                            <div id="image-row" class="flex items-end gap-4 w-full pb-2 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                            </div>
+                            <div id="image-caption" class="text-xs text-gray-600 mt-2"></div>
+                            <input type="file" id="image-input" accept="image/*" class="hidden" multiple>
+                            <input type="hidden" id="photos-data" name="photos">
+                        </div>
+                        <!-- Tour Package Name -->
+                        <div class="mb-4">
+                            <label for="package_name" class="block text-sm font-medium text-gray-700 mb-1">Tour Package Name</label>
+                            <input type="text" id="package_name" name="package_name" value="{{ package.package_name|default:'' }}" class="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-1 focus:ring-[#531B24]" placeholder="Enter tour package name" required>
+                        </div>
+                        <!-- Tour Package Description -->
+                        <div class="mb-4">
+                            <label for="package_description" class="block text-sm font-medium text-gray-700 mb-1">Tour Package Description</label>
+                            <textarea id="package_description" name="description" rows="11" class="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-1 focus:ring-[#531B24]" placeholder="Enter tour package description" required>{{ package.description|default:'' }}</textarea>
+                        </div>
+                    </div>
+
+                    <!-- Vertical divider -->
+                    <div class="border-l-2 border-gray-300 h-auto"></div>
+
+                    <!-- Right content -->
+                    <div class="flex-1">
+                        <!-- Section title -->
+                        <h6 class="font-semibold text-sm text-gray-500 mb-3">Schedule/Availability</h6>
+
+                        <!-- Horizontal Fields Container -->
+                        <div class="flex flex-col md:flex-row gap-6 mb-4">
+                        <!-- Duration Field -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                            <div class="flex gap-2 w-full max-w-xs">
+                                <div class="flex items-stretch flex-1">
+                                    <input type="number" id="duration_hours" name="duration_hours" min="0" max="23"
+                                        value="{{ package.duration_hours|default:0 }}"
+                                        class="w-full border border-gray-300 rounded-l-md p-2 focus:outline-none focus:ring-1 focus:ring-[#531B24]"
+                                        placeholder="0">
+                                    <span class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-gray-100 text-gray-700 text-sm rounded-r-md">hr</span>
+                                </div>
+                                <div class="flex items-stretch flex-1">
+                                    <input type="number" id="duration_minutes" name="duration_minutes" min="0" max="59"
+                                        value="{{ package.duration_minutes|default:0 }}"
+                                        class="w-full border border-gray-300 rounded-l-md p-2 focus:outline-none focus:ring-1 focus:ring-[#531B24]"
+                                        placeholder="0">
+                                    <span class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-gray-100 text-gray-700 text-sm rounded-r-md">min</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pickup Time -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Pickup Time</label>
+                            <div class="w-full max-w-xs">
+                                <input type="time" id="pickup_time" name="pickup_time"
+                                    value="{{ package.pickup_time|default:'' }}"
+                                    class="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-1 focus:ring-[#531B24]">
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">Leave empty for flexible pickup time</p>
+                        </div>
+
+                        <!-- Package Schedule -->
+                        <div class="mb-4">
+                            <div class="w-full">
+
+                            <!-- Expiration Date -->
+                            <div class="mb-4">
+                                <label for="expiration_date" class="block text-xs font-medium text-gray-600 mb-1">Expiration Date</label>
+                                <div class="space-y-2">
+                                    <label class="flex items-center">
+                                        <input type="checkbox" id="no_expiry" name="no_expiry" class="mr-2" {% if not package.expiration_date %}checked{% endif %}>
+                                        <span class="text-sm text-gray-700">No expiry</span>
+                                    </label>
+                                    <input type="text" id="expiration_date" name="expiration_date"
+                                        value="{% if package.expiration_date %}{{ package.expiration_date }}{% endif %}"
+                                        class="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-1 focus:ring-[#531B24]"
+                                        placeholder="Select expiration date" readonly {% if not package.expiration_date %}disabled style="background-color: #f3f4f6;"{% endif %}>
+                                </div>
+                                <input type="hidden" id="expiration_date_data" name="expiration_date_data" value="{% if package.expiration_date %}{{ package.expiration_date }}{% endif %}">
+                            </div>
+                            
+                            <!-- Available Days Field with Calendar Picker -->
+                            <div class="w-full md:w-3/4">
+                                <label for="available_days" class="block text-sm font-medium text-gray-700 mb-1">Available Days</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="available_days" name="available_days"
+                                        value="{{ package.available_days|join:', '|title }}"
+                                        class="flex-1 border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-1 focus:ring-[#531B24]"
+                                        placeholder="Select available days" readonly>
+                                    <button type="button" id="calendar-ok-btn" class="px-4 py-2 bg-[#531B24] text-white rounded-md hover:bg-[#6d2d37] transition hidden">
+                                        OK
+                                    </button>
+                                </div>
+                                <input type="hidden" id="available_days_data" name="available_days_data" value="{{ package.available_days|join:',' }}">
+                            </div>
+                        </div>
+
+                        <!-- Horizontal divider -->
+                        <hr class="border-t border-gray-300 my-6">
+
+                        <!-- Pricing and Capacity Section -->
+                        <div class="flex-1">
+                            <!-- Section title -->
+                            <h6 class="font-semibold text-sm text-gray-500 mb-3">Pricing and Capacity</h6>
+
+                            <div class="flex space-x-4">
+                                <!-- Price Field with ₱ prefix -->
+                                <div class="flex w-1/2">
+                                    <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-100 text-gray-700 text-sm">
+                                        ₱
+                                    </span>
+                                    <input type="number" id="price" name="price" value="{{ package.price|default:'' }}" class="w-full rounded-r-md border border-gray-300 p-2 focus:outline-none focus:ring-1 focus:ring-[#531B24]" placeholder="Enter price" required>
+                                </div>
+
+                                <!-- Pax Field with 'person' suffix -->
+                                <div class="flex w-1/2">
+                                    <input type="number" id="pax" name="max_pax" value="{{ package.max_pax|default:'' }}" class="w-full rounded-l-md border border-gray-300 p-2 focus:outline-none focus:ring-1 focus:ring-[#531B24]" placeholder="Enter max persons">
+                                    <span class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-100 text-gray-700 text-sm">
+                                        person/s
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Horizontal divider -->
+                        <hr class="border-t border-gray-300 my-6">
+
+                        <!-- Route and Locations Section -->
+                        <div class="flex-1">
+                            <!-- Section title -->
+                            <h6 class="font-semibold text-sm text-gray-500 mb-3">Route and Locations</h6>
+
+                            <!-- Pickup Point -->
+                            <div class="mb-4">
+                                <label for="pickup" class="block text-sm font-medium text-gray-600 mb-1">Pickup Point</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="pickup" name="pickup_location" value="{{ package.pickup_location|default:'' }}" class="flex-1 border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-1 focus:ring-[#531B24]" placeholder="Select pickup point" readonly>
+                                    <button type="button" onclick="openPickupMap()" class="px-4 py-2 bg-[#531B24] text-white rounded-md hover:bg-[#6d2d37] transition">
+                                        <i class="fas fa-map-marker-alt mr-1"></i>Map
+                                    </button>
+                                </div>
+                                <div id="pickup-location-display" class="location-display {% if package.pickup_lat %}has-location{% endif %}">
+                                    {% if package.pickup_lat %}
+                                        {{ package.pickup_location }} ({{ package.pickup_lat|floatformat:6 }}, {{ package.pickup_lng|floatformat:6 }})
+                                    {% else %}
+                                        No pickup point selected
+                                    {% endif %}
+                                </div>
+                                <input type="hidden" id="pickup_lat" name="pickup_lat" value="{{ package.pickup_lat }}">
+                                <input type="hidden" id="pickup_lng" name="pickup_lng" value="{{ package.pickup_lng }}">
+                            </div>
+
+                            <!-- Drop-off Point -->
+                            <div class="mb-4">
+                                <label for="dropoff" class="block text-sm font-medium text-gray-600 mb-1">Drop-off Point</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="dropoff" name="destination" value="{{ package.destination|default:'' }}" class="flex-1 border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-1 focus:ring-[#531B24]" placeholder="Select drop-off point" readonly>
+                                    <button type="button" onclick="openDropoffMap()" class="px-4 py-2 bg-[#531B24] text-white rounded-md hover:bg-[#6d2d37] transition">
+                                        <i class="fas fa-map-marker-alt mr-1"></i>Map
+                                    </button>
+                                </div>
+                                <div id="dropoff-location-display" class="location-display {% if package.dropoff_lat %}has-location{% endif %}">
+                                    {% if package.dropoff_lat %}
+                                        {{ package.destination }} ({{ package.dropoff_lat|floatformat:6 }}, {{ package.dropoff_lng|floatformat:6 }})
+                                    {% else %}
+                                        No drop-off point selected
+                                    {% endif %}
+                                </div>
+                                <input type="hidden" id="dropoff_lat" name="dropoff_lat" value="{{ package.dropoff_lat }}">
+                                <input type="hidden" id="dropoff_lng" name="dropoff_lng" value="{{ package.dropoff_lng }}">
+                            </div>
+
+                            <!-- Tour Route / Stops -->
+                            <div>
+                                <label for="stops" class="block text-sm font-medium text-gray-600 mb-1">Tour Route / Stops</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="stops" name="route" value="{{ package.route|default:'' }}" class="flex-1 border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-1 focus:ring-[#531B24]" placeholder="Select stops from map" readonly>
+                                    <button type="button" onclick="openStopsMap()" class="px-4 py-2 bg-[#531B24] text-white rounded-md hover:bg-[#6d2d37] transition">
+                                        <i class="fas fa-map-marker-alt mr-1"></i>Map
+                                    </button>
+                                </div>
+                                <div id="stops-display" class="location-display">
+                                    {% if package.route %}{{ package.route }}{% else %}No stops selected{% endif %}
+                                </div>
+                                <input type="hidden" id="selected_stops_data" name="selected_stops">
+                            </div>
+                        </div>
+                    </div>  
+                </div>
+                
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="openCancelModal()" class="py-2 px-4 border border-gray-300 text-gray-700 font-semibold rounded-full hover:bg-gray-100 transition">
+                        Cancel
+                    </button>                    
+                    <button type="button" onclick="openUpdateModal()" id="updateBtn" class="py-2 px-4 bg-primary-dark text-white font-semibold rounded-full hover:bg-primary-small transition prevent-multiple-clicks" data-prevent-multiple>
+                        <span class="btn-text">Update</span>
+                        <span class="btn-loading hidden">
+                            <i class="fas fa-spinner fa-spin mr-2"></i>Updating...
+                        </span>
+                    </button>                    
+
+                    <!-- Cancel Confirmation Modal -->
+                    <div id="cancelModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-40">
+                        <div class="bg-white w-full max-w-sm p-6 rounded-lg shadow-lg">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4">Discard Changes?</h3>
+                            <p class="text-sm text-gray-600 mb-6">Are you sure you want to cancel editing this tour package? All changes will be lost.</p>
+                            <div class="flex justify-end gap-3">
+                                <button onclick="closeCancelModal()" class="px-4 py-2 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-100 transition">No, stay</button>
+                                <a href="{% url 'tourpackage:view' %}" class="px-4 py-2 bg-red-600 text-white rounded-full hover:bg-red-500 transition">Yes, cancel</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Update Confirmation Modal -->
+                    <div id="updateModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-40">
+                        <div class="bg-white w-full max-w-sm p-6 rounded-lg shadow-lg">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4">Update Package?</h3>
+                            <p class="text-sm text-gray-600 mb-6">Are you sure you want to update this tour package?</p>
+                            <div class="flex justify-end gap-3">
+                                <button onclick="closeUpdateModal()" class="px-4 py-2 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-100 transition">No, go back</button>
+                                <button type="button" onclick="submitForm()" id="confirmUpdateBtn" class="px-4 py-2 bg-[#531B24] text-white rounded-full hover:bg-[#6d2d37] transition prevent-multiple-clicks" data-prevent-multiple>
+                                    <span class="btn-text">Yes, update</span>
+                                    <span class="btn-loading hidden">
+                                        <i class="fas fa-spinner fa-spin mr-2"></i>Updating...
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>                                
+            </form> 
+            
+            <script>
+                // Handle form submission to the new API endpoint
+                function submitForm() {
+                    // Prevent multiple submissions using global loading state
+                    if (isGlobalLoading()) return;
+                    
+                    // Set global loading state and button loading
+                    setGlobalLoading(true);
+                    setButtonLoading('confirmUpdateBtn', true, 'Updating...');
+                    
+                    const form = document.getElementById('packageForm');
+                    const formData = new FormData(form);
+                    
+                    // Convert FormData to JSON for the API
+                    const data = {};
+                    for (let [key, value] of formData.entries()) {
+                        if (key === 'available_days_data' && value) {
+                            try {
+                                data[key] = JSON.parse(value);
+                            } catch (e) {
+                                data[key] = [];
+                            }
+                        } else if (key === 'photos' && value) {
+                            try {
+                                data[key] = JSON.parse(value);
+                            } catch (e) {
+                                data[key] = [];
+                            }
+                        } else {
+                            data[key] = value;
+                        }
+                    }
+                    
+                    // Handle no expiry checkbox
+                    const noExpiryChecked = document.getElementById('no_expiry').checked;
+                    if (noExpiryChecked) {
+                        data.expiration_date_data = null; // Set to null for no expiry
+                        data.no_expiry = true;
+                    }
+                    
+                    // Handle empty fields - use current values if field is empty
+                    const currentValues = {
+                        'package_name': '{{ package.package_name|escapejs }}',
+                        'description': '{{ package.description|escapejs }}',
+                        'duration_hours': {{ package.duration_hours|default:0 }},
+                        'price': {{ package.price|default:0 }},
+                        'max_pax': {{ package.max_pax|default:0 }},
+                        'pickup_location': '{{ package.pickup_location|escapejs }}',
+                        'destination': '{{ package.destination|escapejs }}',
+                        'route': '{{ package.route|escapejs }}',
+                        'pickup_lat': {{ package.pickup_lat|default:0 }},
+                        'pickup_lng': {{ package.pickup_lng|default:0 }},
+                        'dropoff_lat': {{ package.dropoff_lat|default:0 }},
+                        'dropoff_lng': {{ package.dropoff_lng|default:0 }},
+                        'available_days_data': {{ package.available_days|safe }}
+                    };
+                    
+                    // For each field, if it's empty, use the current value
+                    Object.keys(currentValues).forEach(key => {
+                        if (!data[key] || data[key] === '') {
+                            data[key] = currentValues[key];
+                        }
+                    });
+                    
+                    // Handle available_days_data specially
+                    if (!data['available_days_data'] || data['available_days_data'] === '') {
+                        data['available_days_data'] = currentValues['available_days_data'];
+                    }
+                    
+                    // Convert numeric fields
+                    data.duration_hours = parseInt(data.duration_hours) || 0;
+                    data.duration_minutes = parseInt(data.duration_minutes) || 0;
+                    
+                    // Add pickup time field
+                    const pickupTime = document.getElementById('pickup_time').value;
+                    if (pickupTime) data.pickup_time = pickupTime;
+                    
+                    // Get selected stops data
+                    const stopsData = document.getElementById('selected_stops_data').value;
+                    data.selected_stops = stopsData || '[]';
+                    if (data.price) data.price = parseInt(data.price) || 0;
+                    if (data.max_pax) data.max_pax = parseInt(data.max_pax) || 0;
+                    if (data.pickup_lat) data.pickup_lat = parseFloat(data.pickup_lat) || 0;
+                    if (data.pickup_lng) data.pickup_lng = parseFloat(data.pickup_lng) || 0;
+                    if (data.dropoff_lat) data.dropoff_lat = parseFloat(data.dropoff_lat) || 0;
+                    if (data.dropoff_lng) data.dropoff_lng = parseFloat(data.dropoff_lng) || 0;
+                    
+                    // Add the package ID to the URL
+                    const packageId = '{{ package.id }}';
+                    const url = `/api/tourpackage/${packageId}/`;
+                    
+                    console.log('Submitting data:', data);
+                    
+                    fetch(url, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                        },
+                        body: JSON.stringify(data)
+                    })
+                    .then(response => {
+                        console.log('Response status:', response.status);
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Response data:', data);
+                        closeUpdateModal(); // Close the confirmation modal first
+                        if (data.success) {
+                            showSuccessModal('Package updated successfully!');
+                            setTimeout(() => {
+                                window.location.href = '/tourpackage/view/';
+                            }, 1500);
+                        } else {
+                            showErrorModal('Error updating package: ' + (data.error || 'Unknown error'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        closeUpdateModal(); // Close the confirmation modal
+                        showErrorModal('Error updating package. Please try again.');
+                    })
+                    .finally(() => {
+                        // Reset global loading state
+                        setGlobalLoading(false);
+                        setButtonLoading('confirmUpdateBtn', false);
+                    });
+                }
+            </script>
+            
+            <!-- Pickup Point Map Modal -->
+            <div id="pickupMapModal" class="map-modal">
+                <div class="map-modal-content">
+                    <div class="map-modal-header">
+                        <div class="map-modal-title">
+                            <i class="fas fa-map-marker-alt mr-2"></i>
+                            Select Pickup Point
+                        </div>
+                        <button class="map-modal-close" onclick="closePickupMap()">&times;</button>
+                    </div>
+                    <div class="map-container">
+                        <div id="pickupMap"></div>
+                        <div class="map-controls">
+                            <h4>Available Terminals</h4>
+                            <div id="terminal-list" class="terminal-list">
+                                <div class="terminal-item">Loading terminals...</div>
+                            </div>
+                        </div>
+                        <div class="map-actions">
+                            <button class="map-btn map-btn-secondary" onclick="closePickupMap()">Cancel</button>
+                            <button class="map-btn map-btn-primary" onclick="confirmPickupLocation()">Select Point</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Drop-off Point Map Modal -->
+            <div id="dropoffMapModal" class="map-modal">
+                <div class="map-modal-content">
+                    <div class="map-modal-header">
+                        <div class="map-modal-title">
+                            <i class="fas fa-map-marker-alt mr-2"></i>
+                            Select Drop-off Point
+                        </div>
+                        <button class="map-modal-close" onclick="closeDropoffMap()">&times;</button>
+                    </div>
+                    <div class="map-container">
+                        <div id="dropoffMap"></div>
+                        <div class="map-controls">
+                            <h4>Available Drop-off Points</h4>
+                            <p style="font-size: 12px; color: #666; margin: 0;">
+                                Select from available drop-off points for your chosen pickup location. Only compatible destinations are shown.
+                            </p>
+                            <div id="dropoff-selection-status" style="margin-top: 8px; padding: 4px 8px; background: #f8f9fa; border-radius: 4px; font-size: 11px; color: #6c757d;">
+                                No location selected
+                            </div>
+                        </div>
+                        <div class="map-actions">
+                            <button class="map-btn map-btn-secondary" onclick="closeDropoffMap()">Cancel</button>
+                            <button class="map-btn map-btn-primary" onclick="confirmDropoffLocation()">Select Point</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tour Stops Map Modal -->
+            <div id="stopsMapModal" class="map-modal">
+                <div class="map-modal-content">
+                    <div class="map-modal-header">
+                        <div class="map-modal-title">
+                            <i class="fas fa-route mr-2"></i>
+                            Select Tour Stops
+                        </div>
+                        <button class="map-modal-close" onclick="closeStopsMap()">&times;</button>
+                    </div>
+                    <div class="map-container">
+                        <div id="stopsMap"></div>
+                        <div class="map-controls">
+                            <h4>Available Stops</h4>
+                            <div id="stops-list" class="terminal-list">
+                                <div class="terminal-item">Loading stops...</div>
+                            </div>
+                            <div style="margin-top: 10px; padding: 8px; background: #e3f2fd; border-radius: 4px; font-size: 11px; color: #1565c0;">
+                                <strong>Selected:</strong> <span id="selected-stops-count">0</span> stops
+                            </div>
+                        </div>
+                        <div class="map-actions">
+                            <button class="map-btn map-btn-secondary" onclick="closeStopsMap()">Cancel</button>
+                            <button class="map-btn map-btn-primary" onclick="confirmSelectedStops()">Confirm Stops</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Leaflet JavaScript -->
+            <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+                    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+                    crossorigin=""></script>
+            
+            <!-- Flatpickr JavaScript for calendar picker -->
+            <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+            
+            <script>
+                // Global variables
+                let selectedImages = [];
+                const maxImages = 10;
+                let pickupMap, dropoffMap, stopsMap;
+                let pickupMarker, dropoffMarker;
+                let selectedPickupPoint = null;
+                let selectedDropoffPoint = null;
+                let selectedStops = [];
+                let terminals = [];
+                let stops = [];
+                let terminalMarkers = [];
+                let stopMarkers = [];
+                let selectedDays = [];
+
+                // Initialize calendar picker
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Initialize Flatpickr for expiration date
+                    const expirationDateInput = document.getElementById('expiration_date');
+                    const expirationDateData = document.getElementById('expiration_date_data');
+                    
+                    const expirationCalendar = flatpickr(expirationDateInput, {
+                        mode: "single",
+                        dateFormat: "Y-m-d",
+                        minDate: "today",
+                        inline: false,
+                        allowInput: true,
+                        clickOpens: true,
+                        onChange: function(selectedDates, dateStr, instance) {
+                            const selectedDate = selectedDates[0];
+                            if (selectedDate) {
+                                expirationDateData.value = selectedDate.toISOString();
+                            } else {
+                                expirationDateData.value = '';
+                            }
+                        }
+                    });
+                    
+                    // Handle no expiry checkbox
+                    const noExpiryCheckbox = document.getElementById('no_expiry');
+                    noExpiryCheckbox.addEventListener('change', function() {
+                        if (this.checked) {
+                            // Disable date picker and clear value
+                            expirationDateInput.disabled = true;
+                            expirationDateInput.style.backgroundColor = '#f3f4f6';
+                            expirationDateInput.placeholder = 'No expiry selected';
+                            expirationCalendar.clear();
+                            expirationDateData.value = '';
+                        } else {
+                            // Enable date picker
+                            expirationDateInput.disabled = false;
+                            expirationDateInput.style.backgroundColor = '';
+                            expirationDateInput.placeholder = 'Select expiration date';
+                        }
+                    });
+                    
+                    // Initialize Flatpickr for available days
+                    const availableDaysInput = document.getElementById('available_days');
+                    const availableDaysData = document.getElementById('available_days_data');
+                    const calendarOkBtn = document.getElementById('calendar-ok-btn');
+                    
+                    // Parse existing available days from package data
+                    const existingDays = {{ package.available_days|safe }};
+                    if (existingDays && Array.isArray(existingDays)) {
+                        selectedDays = existingDays;
+                        availableDaysData.value = JSON.stringify(selectedDays);
+                        
+                        // Display the current days in the input field
+                        const dayLabels = selectedDays.map(day => day.charAt(0).toUpperCase() + day.slice(1));
+                        availableDaysInput.value = dayLabels.join(', ');
+                    } else if (availableDaysData.value) {
+                        try {
+                            selectedDays = JSON.parse(availableDaysData.value);
+                        } catch (e) {
+                            selectedDays = [];
+                        }
+                    }
+                    
+                    const calendar = flatpickr(availableDaysInput, {
+                        mode: "multiple",
+                        dateFormat: "Y-m-d",
+                        inline: false,
+                        allowInput: true,
+                        clickOpens: true,
+                        onChange: function(selectedDates, dateStr, instance) {
+                            selectedDays = selectedDates.map(date => {
+                                const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                                return dayNames[date.getDay()];
+                            });
+                            availableDaysData.value = JSON.stringify(selectedDays);
+                            
+                            // Show OK button when dates are selected
+                            if (selectedDates.length > 0) {
+                                calendarOkBtn.classList.remove('hidden');
+                            } else {
+                                calendarOkBtn.classList.add('hidden');
+                            }
+                        }
+                    });
+                    
+                    // OK button functionality
+                    calendarOkBtn.addEventListener('click', function() {
+                        if (selectedDays.length > 0) {
+                            const dayLabels = selectedDays.map(day => day.charAt(0).toUpperCase() + day.slice(1));
+                            availableDaysInput.value = dayLabels.join(', ');
+                            calendar.close();
+                            calendarOkBtn.classList.add('hidden');
+                        }
+                    });
+                    
+                    // Initialize image handling with existing photos
+                    loadExistingPhotos();
+                    renderImageRow();
+                    
+                    document.getElementById('image-input').addEventListener('change', function(event) {
+                        const files = Array.from(event.target.files);
+                        const remaining = maxImages - selectedImages.length;
+                        files.slice(0, remaining).forEach(file => {
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                selectedImages.push({ url: e.target.result, file });
+                                renderImageRow();
+                            }
+                            reader.readAsDataURL(file);
+                        });
+                        event.target.value = '';
+                    });
+                });
+
+                // Load existing photos from the package data
+                function loadExistingPhotos() {
+                    const existingPhotos = {{ package.photos|safe }};
+                    if (existingPhotos && Array.isArray(existingPhotos)) {
+                        selectedImages = existingPhotos.map(photo => ({
+                            url: photo.url,
+                            filename: photo.filename || 'existing_photo.jpg',
+                            caption: photo.caption || '',
+                            existing: true // Mark as existing photo
+                        }));
+                    }
+                }
+
+                // Image handling functions
+                function renderImageRow() {
+                    const row = document.getElementById('image-row');
+                    row.innerHTML = '';
+                    
+                    if (selectedImages.length === 0) {
+                        row.className = 'flex justify-center items-center gap-4 w-full pb-2';
+                    } else if (selectedImages.length > 3) {
+                        row.className = 'flex items-end gap-4 w-full pb-2 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100';
+                    } else {
+                        row.className = 'flex items-end gap-4 w-full pb-2';
+                    }
+                    
+                    selectedImages.forEach((imgObj, idx) => {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'relative bg-white rounded-lg shadow w-24 h-24 flex-shrink-0 flex items-center justify-center';
+                        
+                        const img = document.createElement('img');
+                        img.src = imgObj.url;
+                        img.className = 'w-full h-full object-cover rounded-lg';
+                        wrapper.appendChild(img);
+                        
+                        const removeBtn = document.createElement('button');
+                        removeBtn.type = 'button';
+                        removeBtn.className = 'absolute top-1 right-1 bg-black bg-opacity-60 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-opacity-80';
+                        removeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+                        removeBtn.onclick = () => { removeImage(idx); };
+                        wrapper.appendChild(removeBtn);
+                        row.appendChild(wrapper);
+                    });
+                    
+                    if (selectedImages.length < maxImages) {
+                        const addLabel = document.createElement('label');
+                        addLabel.className = 'flex items-center justify-center w-24 h-24 rounded-lg cursor-pointer flex-shrink-0 border-2 border-dashed border-[#531B24] hover:bg-gray-50 transition';
+                        addLabel.htmlFor = 'image-input';
+                        addLabel.innerHTML = `
+                        <div class="flex flex-col items-center justify-center text-[#531B24]">
+                            <i class="fa-solid fa-circle-plus text-3xl mb-1"></i>
+                            <span class="text-xs font-semibold">Add photos</span>
+                        </div>
+                        `;
+                        row.appendChild(addLabel);
+                    }
+                    
+                    const caption = document.getElementById('image-caption');
+                    caption.textContent = `Photos: ${selectedImages.length}/${maxImages}`;
+                    
+                    // Update hidden photos data
+                    const photosData = selectedImages.map(img => ({
+                        url: img.url,
+                        filename: img.file ? img.file.name : (img.filename || ''),
+                        caption: img.caption || '',
+                        existing: img.existing || false
+                    }));
+                    document.getElementById('photos-data').value = JSON.stringify(photosData);
+                }
+
+                function removeImage(idx) {
+                    selectedImages.splice(idx, 1);
+                    renderImageRow();
+                }
+
+                // Map functions
+                function openPickupMap() {
+                    console.log('Opening pickup map...');
+                    document.getElementById('pickupMapModal').classList.add('active');
+                    
+                    setTimeout(() => {
+                        if (!pickupMap) {
+                            initPickupMap();
+                            // Load terminals after map initialization
+                            setTimeout(() => {
+                                loadTerminals();
+                            }, 300);
+                        } else {
+                            pickupMap.invalidateSize();
+                            loadTerminals();
+                        }
+                    }, 200);
+                }
+
+                function closePickupMap() {
+                    document.getElementById('pickupMapModal').classList.remove('active');
+                }
+
+                function openDropoffMap() {
+                    // Check if pickup point is selected first
+                    if (!selectedPickupPoint) {
+                        showErrorModal('Please select a pickup point first before choosing a drop-off location.');
+                        return;
+                    }
+                    
+                    console.log('Opening drop-off map for pickup:', selectedPickupPoint.name);
+                    document.getElementById('dropoffMapModal').classList.add('active');
+                    
+                    setTimeout(() => {
+                        if (!dropoffMap) {
+                            console.log('Initializing drop-off map...');
+                            initDropoffMap();
+                        } else {
+                            console.log('Refreshing existing drop-off map...');
+                            dropoffMap.invalidateSize();
+                        }
+                        
+                        // Clear existing markers
+                        if (dropoffMarker) {
+                            dropoffMap.removeLayer(dropoffMarker);
+                            dropoffMarker = null;
+                        }
+                        selectedDropoffPoint = null;
+                        
+                        const statusElement = document.getElementById('dropoff-selection-status');
+                        if (statusElement) {
+                            statusElement.textContent = 'Loading available drop-off points...';
+                            statusElement.style.background = '#fff3cd';
+                            statusElement.style.color = '#856404';
+                        }
+                        
+                        // Load available drop-off points for the selected pickup
+                        setTimeout(() => {
+                            loadDropoffPoints();
+                        }, 500);
+                    }, 200);
+                }
+
+                function closeDropoffMap() {
+                    document.getElementById('dropoffMapModal').classList.remove('active');
+                }
+
+                function initPickupMap() {
+                    console.log('Initializing pickup map...');
+                    const mapContainer = document.getElementById('pickupMap');
+                    if (!mapContainer) {
+                        console.error('Pickup map container not found!');
+                        return;
+                    }
+                    
+                    // Ensure the map container is visible and properly sized
+                    mapContainer.style.display = 'block';
+                    mapContainer.style.height = '100%';
+                    mapContainer.style.width = '100%';
+                    
+                    pickupMap = L.map('pickupMap').setView([10.3157, 123.8854], 12);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors'
+                    }).addTo(pickupMap);
+                    
+                    // Force map to refresh and invalidate size
+                    setTimeout(() => {
+                        pickupMap.invalidateSize();
+                        pickupMap.setView([10.3157, 123.8854], 12);
+                    }, 200);
+                }
+
+                function initDropoffMap() {
+                    console.log('Initializing drop-off map...');
+                    const mapContainer = document.getElementById('dropoffMap');
+                    if (!mapContainer) {
+                        console.error('Drop-off map container not found!');
+                        return;
+                    }
+                    
+                    mapContainer.style.display = 'block';
+                    mapContainer.style.height = '100%';
+                    mapContainer.style.width = '100%';
+                    
+                    dropoffMap = L.map('dropoffMap').setView([10.3157, 123.8854], 12);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors'
+                    }).addTo(dropoffMap);
+                    
+                    setTimeout(() => {
+                        dropoffMap.invalidateSize();
+                    }, 100);
+                }
+
+                function loadTerminals() {
+                    console.log('Loading terminals...');
+                    const terminalList = document.getElementById('terminal-list');
+                    terminalList.innerHTML = '<div class="terminal-item">Loading terminals...</div>';
+                    
+                    // Fetch terminals from API
+                    fetch('/api/map/terminals/')
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`HTTP error! status: ${response.status}`);
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log('API response:', data);
+                            if (data.success && data.data && data.data.terminals) {
+                                terminals = data.data.terminals;
+                                console.log(`Loaded ${terminals.length} terminals from API`);
+                            } else {
+                                console.error('Invalid API response format:', data);
+                                terminals = [];
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching terminals:', error);
+                            // Fallback to sample data if API fails
+                            terminals = [
+                                {
+                                    id: 1,
+                                    name: 'SM City Cebu Terminal',
+                                    description: 'Main tartanilla terminal near SM City Cebu',
+                                    latitude: 10.3157,
+                                    longitude: 123.8854,
+                                    point_type: 'pickup',
+                                    icon_color: '#28a745'
+                                },
+                                {
+                                    id: 2,
+                                    name: 'Ayala Center Cebu Terminal',
+                                    description: 'Tartanilla terminal at Ayala Center Cebu',
+                                    latitude: 10.3187,
+                                    longitude: 123.9064,
+                                    point_type: 'pickup',
+                                    icon_color: '#28a745'
+                                }
+                            ];
+                        })
+                        .finally(() => {
+                            renderTerminalList();
+                            
+                            // Add a small delay to ensure map is fully loaded before adding markers
+                            setTimeout(() => {
+                                addTerminalMarkers();
+                            }, 300);
+                        });
+                }
+
+                function renderTerminalList() {
+                    const terminalList = document.getElementById('terminal-list');
+                    terminalList.innerHTML = '';
+                    
+                    if (terminals.length === 0) {
+                        terminalList.innerHTML = '<div class="terminal-item">No terminals available</div>';
+                        return;
+                    }
+                    
+                    terminals.forEach((terminal, index) => {
+                        const item = document.createElement('div');
+                        item.className = 'terminal-item';
+                        item.innerHTML = `
+                            <div style="font-weight: 500;">${terminal.name}</div>
+                            <div style="font-size: 11px; color: #666; margin-top: 2px;">
+                                ${terminal.description || 'No description'} • ${terminal.point_type || 'pickup'}
+                            </div>
+                        `;
+                        item.onclick = () => selectTerminal(index);
+                        terminalList.appendChild(item);
+                    });
+                }
+
+                function addTerminalMarkers() {
+                    console.log('Adding terminal markers...');
+                    if (!pickupMap) {
+                        console.error('Pickup map not initialized!');
+                        return;
+                    }
+                    
+                    // Clear existing markers
+                    terminalMarkers.forEach(marker => {
+                        if (pickupMap.hasLayer(marker)) {
+                            pickupMap.removeLayer(marker);
+                        }
+                    });
+                    terminalMarkers = [];
+                    
+                    terminals.forEach((terminal, index) => {
+                        console.log(`Adding marker for ${terminal.name} at ${terminal.latitude}, ${terminal.longitude}`);
+                        
+                        // Use the icon_color from the database, fallback to green if not available
+                        const iconColor = terminal.icon_color || '#28a745';
+                        
+                        const marker = L.marker([terminal.latitude, terminal.longitude], {
+                            icon: L.divIcon({
+                                className: 'terminal-marker',
+                                html: `<div style="background-color: ${iconColor}; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+                                iconSize: [16, 16],
+                                iconAnchor: [8, 8]
+                            })
+                        }).addTo(pickupMap);
+                        
+                        marker.bindPopup(`
+                            <div style="text-align: center;">
+                                <strong>${terminal.name}</strong><br>
+                                <small>${terminal.description || 'No description'}</small><br>
+                                <small style="color: #666;">Type: ${terminal.point_type || 'pickup'}</small>
+                            </div>
+                        `);
+                        
+                        marker.on('click', () => selectTerminal(index));
+                        
+                        // Store marker reference
+                        terminalMarkers.push(marker);
+                    });
+                    
+                    console.log(`Added ${terminals.length} terminal markers`);
+                    
+                    // Fit map bounds to show all terminals
+                    if (terminals.length > 0) {
+                        const bounds = L.latLngBounds(terminals.map(t => [t.latitude, t.longitude]));
+                        pickupMap.fitBounds(bounds, { padding: [20, 20] });
+                    }
+                }
+
+                function selectTerminal(index) {
+                    const terminal = terminals[index];
+                    
+                    document.querySelectorAll('.terminal-item').forEach(item => item.classList.remove('selected'));
+                    document.querySelectorAll('.terminal-item')[index].classList.add('selected');
+                    
+                    if (pickupMarker) {
+                        pickupMap.removeLayer(pickupMarker);
+                    }
+                    
+                    pickupMarker = L.marker([terminal.latitude, terminal.longitude], {
+                        icon: L.divIcon({
+                            className: 'selected-terminal-marker',
+                            html: `<div style="background-color: #531B24; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+                            iconSize: [24, 24],
+                            iconAnchor: [12, 12]
+                        })
+                    }).addTo(pickupMap);
+                    
+                    selectedPickupPoint = {
+                        lat: terminal.latitude,
+                        lng: terminal.longitude,
+                        name: terminal.name,
+                        id: terminal.id
+                    };
+                    
+                    pickupMap.setView([terminal.latitude, terminal.longitude], 15);
+                }
+
+                function confirmPickupLocation() {
+                    if (selectedPickupPoint) {
+                        document.getElementById('pickup').value = selectedPickupPoint.name;
+                        document.getElementById('pickup_lat').value = selectedPickupPoint.lat;
+                        document.getElementById('pickup_lng').value = selectedPickupPoint.lng;
+                        
+                        const display = document.getElementById('pickup-location-display');
+                        display.textContent = `${selectedPickupPoint.name} (${selectedPickupPoint.lat.toFixed(6)}, ${selectedPickupPoint.lng.toFixed(6)})`;
+                        display.classList.add('has-location');
+                        
+                        // Clear any existing drop-off selection since pickup changed
+                        clearDropoffSelection();
+                        
+                        closePickupMap();
+                    } else {
+                        showErrorModal('Please select a pickup point first.');
+                    }
+                }
+
+                function confirmDropoffLocation() {
+                    if (selectedDropoffPoint) {
+                        document.getElementById('dropoff').value = selectedDropoffPoint.name;
+                        document.getElementById('dropoff_lat').value = selectedDropoffPoint.lat;
+                        document.getElementById('dropoff_lng').value = selectedDropoffPoint.lng;
+                        
+                        const display = document.getElementById('dropoff-location-display');
+                        display.textContent = `${selectedDropoffPoint.name} (${selectedDropoffPoint.lat.toFixed(6)}, ${selectedDropoffPoint.lng.toFixed(6)})`;
+                        display.classList.add('has-location');
+                        
+                        closeDropoffMap();
+                    } else {
+                        showErrorModal('Please select a drop-off point first.');
+                    }
+                }
+                
+                // Helper functions for pickup/dropoff dependency
+                function clearDropoffSelection() {
+                    document.getElementById('dropoff').value = '';
+                    document.getElementById('dropoff_lat').value = '';
+                    document.getElementById('dropoff_lng').value = '';
+                    
+                    const display = document.getElementById('dropoff-location-display');
+                    display.textContent = 'No drop-off point selected';
+                    display.classList.remove('has-location');
+                    
+                    selectedDropoffPoint = null;
+                }
+                
+                function loadDropoffPoints() {
+                    if (!selectedPickupPoint) {
+                        console.error('No pickup point selected');
+                        return;
+                    }
+                    
+                    console.log('Loading drop-off points for pickup:', selectedPickupPoint.name);
+                    
+                    // Fetch available drop-off points for the selected pickup
+                    const apiUrl = selectedPickupPoint.id 
+                        ? `/api/map/dropoff-points/?pickup_id=${selectedPickupPoint.id}&pickup_name=${encodeURIComponent(selectedPickupPoint.name)}`
+                        : `/api/map/dropoff-points/?pickup_name=${encodeURIComponent(selectedPickupPoint.name)}`;
+                    
+                    fetch(apiUrl)
+                        .then(response => {
+                            console.log('Response status:', response.status);
+                            if (!response.ok) {
+                                throw new Error(`HTTP error! status: ${response.status}`);
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log('Drop-off points API response:', data);
+                            if (data.success && data.data && data.data.dropoff_points) {
+                                const dropoffPoints = data.data.dropoff_points;
+                                console.log(`Loaded ${dropoffPoints.length} drop-off points:`, dropoffPoints);
+                                
+                                // Clear existing markers
+                                if (window.dropoffMarkers) {
+                                    window.dropoffMarkers.forEach(marker => {
+                                        if (dropoffMap.hasLayer(marker)) {
+                                            dropoffMap.removeLayer(marker);
+                                        }
+                                    });
+                                }
+                                window.dropoffMarkers = [];
+                                
+                                // Add markers for each drop-off point
+                                dropoffPoints.forEach((point, index) => {
+                                    console.log(`Adding marker for ${point.name} at ${point.latitude}, ${point.longitude}`);
+                                    
+                                    if (point.id === 'custom') {
+                                        // Enable custom location selection
+                                        enableCustomDropoffSelection();
+                                        return;
+                                    }
+                                    
+                                    const marker = L.marker([point.latitude, point.longitude], {
+                                        icon: L.divIcon({
+                                            className: 'dropoff-marker',
+                                            html: '<div style="background-color: #dc3545; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+                                            iconSize: [16, 16],
+                                            iconAnchor: [8, 8]
+                                        })
+                                    }).addTo(dropoffMap);
+                                    
+                                    marker.bindPopup(`
+                                        <div style="text-align: center;">
+                                            <strong>${point.name}</strong><br>
+                                            <small>${point.description || 'Drop-off location'}</small>
+                                        </div>
+                                    `);
+                                    
+                                    marker.on('click', () => selectDropoffPoint(point));
+                                    window.dropoffMarkers.push(marker);
+                                });
+                                
+                                console.log(`Added ${window.dropoffMarkers.length} markers to map`);
+                                
+                                // Fit map to show all drop-off points
+                                const validPoints = dropoffPoints.filter(p => p.id !== 'custom' && p.latitude && p.longitude);
+                                if (validPoints.length > 0) {
+                                    const bounds = L.latLngBounds(validPoints.map(p => [p.latitude, p.longitude]));
+                                    dropoffMap.fitBounds(bounds, { padding: [20, 20] });
+                                    console.log('Map bounds set to show drop-off points');
+                                }
+                                
+                                // Update status
+                                const statusElement = document.getElementById('dropoff-selection-status');
+                                if (statusElement) {
+                                    statusElement.textContent = `${dropoffPoints.length} drop-off points available for ${selectedPickupPoint.name}`;
+                                    statusElement.style.background = '#d1ecf1';
+                                    statusElement.style.color = '#0c5460';
+                                }
+                            } else {
+                                console.error('Invalid drop-off points API response:', data);
+                                showDropoffError('No drop-off points available for this pickup location.');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching drop-off points:', error);
+                            showDropoffError('Failed to load drop-off points. Please try again.');
+                        });
+                }
+                
+                function enableCustomDropoffSelection() {
+                    console.log('Enabling custom drop-off selection');
+                    
+                    // Add click handler for custom location selection
+                    dropoffMap.on('click', function(e) {
+                        selectCustomDropoffPoint(e.latlng);
+                    });
+                    
+                    const statusElement = document.getElementById('dropoff-selection-status');
+                    if (statusElement) {
+                        statusElement.textContent = 'Click anywhere on the map to select a custom drop-off location';
+                        statusElement.style.background = '#fff3cd';
+                        statusElement.style.color = '#856404';
+                    }
+                }
+                
+                function selectDropoffPoint(point) {
+                    console.log('Selected drop-off point:', point.name);
+                    
+                    // Remove existing selection marker
+                    if (dropoffMarker) {
+                        dropoffMap.removeLayer(dropoffMarker);
+                    }
+                    
+                    // Add selection marker
+                    dropoffMarker = L.marker([point.latitude, point.longitude], {
+                        icon: L.divIcon({
+                            className: 'selected-dropoff-marker',
+                            html: '<div style="background-color: #531B24; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+                            iconSize: [24, 24],
+                            iconAnchor: [12, 12]
+                        })
+                    }).addTo(dropoffMap);
+                    
+                    selectedDropoffPoint = {
+                        lat: point.latitude,
+                        lng: point.longitude,
+                        name: point.name,
+                        id: point.id
+                    };
+                    
+                    // Update status
+                    const statusElement = document.getElementById('dropoff-selection-status');
+                    if (statusElement) {
+                        statusElement.textContent = `Selected: ${point.name}`;
+                        statusElement.style.background = '#d4edda';
+                        statusElement.style.color = '#155724';
+                    }
+                    
+                    dropoffMap.setView([point.latitude, point.longitude], 15);
+                }
+                
+                function selectCustomDropoffPoint(latlng) {
+                    console.log('Selected custom drop-off point:', latlng);
+                    
+                    // Remove existing selection marker
+                    if (dropoffMarker) {
+                        dropoffMap.removeLayer(dropoffMarker);
+                    }
+                    
+                    // Add selection marker
+                    dropoffMarker = L.marker(latlng, {
+                        icon: L.divIcon({
+                            className: 'custom-dropoff-marker',
+                            html: '<div style="background-color: #dc3545; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+                            iconSize: [20, 20],
+                            iconAnchor: [10, 10]
+                        })
+                    }).addTo(dropoffMap);
+                    
+                    dropoffMarker.bindPopup(`
+                        <div style="text-align: center;">
+                            <strong>Custom Drop-off Point</strong><br>
+                            <small>Lat: ${latlng.lat.toFixed(6)}<br>Lng: ${latlng.lng.toFixed(6)}</small>
+                        </div>
+                    `).openPopup();
+                    
+                    selectedDropoffPoint = {
+                        lat: latlng.lat,
+                        lng: latlng.lng,
+                        name: `Custom Location (${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)})`
+                    };
+                    
+                    // Update status
+                    const statusElement = document.getElementById('dropoff-selection-status');
+                    if (statusElement) {
+                        statusElement.textContent = `Custom location selected: ${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`;
+                        statusElement.style.background = '#d4edda';
+                        statusElement.style.color = '#155724';
+                    }
+                }
+                
+                function showDropoffError(message) {
+                    const statusElement = document.getElementById('dropoff-selection-status');
+                    if (statusElement) {
+                        statusElement.textContent = message;
+                        statusElement.style.background = '#f8d7da';
+                        statusElement.style.color = '#721c24';
+                    }
+                }
+
+                // Modal functions
+                function openCancelModal() {
+                    document.getElementById('cancelModal').classList.remove('hidden');
+                    document.getElementById('cancelModal').classList.add('flex');
+                }
+
+                function closeCancelModal() {
+                    document.getElementById('cancelModal').classList.add('hidden');
+                    document.getElementById('cancelModal').classList.remove('flex');
+                }
+
+                function openUpdateModal() {
+                    document.getElementById('updateModal').classList.remove('hidden');
+                    document.getElementById('updateModal').classList.add('flex');
+                }
+
+                function closeUpdateModal() {
+                    document.getElementById('updateModal').classList.add('hidden');
+                    document.getElementById('updateModal').classList.remove('flex');
+                }
+
+                // Stops map functions
+                function openStopsMap() {
+                    document.getElementById('stopsMapModal').classList.add('active');
+                    setTimeout(() => {
+                        if (!stopsMap) {
+                            initStopsMap();
+                            setTimeout(() => loadStops(), 300);
+                        } else {
+                            stopsMap.invalidateSize();
+                            loadStops();
+                        }
+                    }, 200);
+                }
+
+                function closeStopsMap() {
+                    document.getElementById('stopsMapModal').classList.remove('active');
+                }
+
+                function initStopsMap() {
+                    const mapContainer = document.getElementById('stopsMap');
+                    if (!mapContainer) return;
+                    
+                    mapContainer.style.display = 'block';
+                    mapContainer.style.height = '100%';
+                    mapContainer.style.width = '100%';
+                    
+                    stopsMap = L.map('stopsMap').setView([10.3157, 123.8854], 12);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors'
+                    }).addTo(stopsMap);
+                    
+                    setTimeout(() => {
+                        stopsMap.invalidateSize();
+                        stopsMap.setView([10.3157, 123.8854], 12);
+                    }, 200);
+                }
+
+                function loadStops() {
+                    const stopsList = document.getElementById('stops-list');
+                    stopsList.innerHTML = '<div class="terminal-item">Loading stops...</div>';
+                    
+                    fetch('/api/map/stops/')
+                        .then(response => response.ok ? response.json() : Promise.reject(response.statusText))
+                        .then(data => {
+                            if (data.success && data.data && data.data.stops) {
+                                stops = data.data.stops;
+                            } else {
+                                stops = [];
+                            }
+                        })
+                        .catch(error => {
+                            stops = [];
+                        })
+                        .finally(() => {
+                            renderStopsList();
+                            setTimeout(() => addStopMarkers(), 300);
+                        });
+                }
+
+                function renderStopsList() {
+                    const stopsList = document.getElementById('stops-list');
+                    stopsList.innerHTML = '';
+                    
+                    if (stops.length === 0) {
+                        stopsList.innerHTML = '<div class="terminal-item">No stops available</div>';
+                        return;
+                    }
+                    
+                    stops.forEach((stop, index) => {
+                        const isSelected = selectedStops.some(s => s.id === stop.id);
+                        const item = document.createElement('div');
+                        item.className = `terminal-item ${isSelected ? 'selected' : ''}`;
+                        item.innerHTML = `
+                            <div style="font-weight: 500;">${stop.name}</div>
+                            <div style="font-size: 11px; color: #666; margin-top: 2px;">
+                                ${stop.description || 'No description'} • ${stop.point_type || 'stop'}
+                            </div>
+                        `;
+                        item.onclick = () => toggleStop(index);
+                        stopsList.appendChild(item);
+                    });
+                    
+                    updateSelectedStopsCount();
+                }
+
+                function addStopMarkers() {
+                    if (!stopsMap) return;
+                    
+                    stopMarkers.forEach(marker => {
+                        if (stopsMap.hasLayer(marker)) {
+                            stopsMap.removeLayer(marker);
+                        }
+                    });
+                    stopMarkers = [];
+                    
+                    stops.forEach((stop, index) => {
+                        const iconColor = stop.icon_color || '#ff6b35';
+                        const isSelected = selectedStops.some(s => s.id === stop.id);
+                        
+                        const marker = L.marker([stop.latitude, stop.longitude], {
+                            icon: L.divIcon({
+                                className: 'terminal-marker',
+                                html: `<div style="background-color: ${isSelected ? '#531B24' : iconColor}; width: ${isSelected ? '20px' : '16px'}; height: ${isSelected ? '20px' : '16px'}; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+                                iconSize: [isSelected ? 20 : 16, isSelected ? 20 : 16],
+                                iconAnchor: [isSelected ? 10 : 8, isSelected ? 10 : 8]
+                            })
+                        }).addTo(stopsMap);
+                        
+                        marker.bindPopup(`
+                            <div style="text-align: center;">
+                                <strong>${stop.name}</strong><br>
+                                <small>${stop.description || 'No description'}</small><br>
+                                <small style="color: #666;">Type: ${stop.point_type || 'stop'}</small>
+                            </div>
+                        `);
+                        
+                        marker.on('click', () => toggleStop(index));
+                        stopMarkers.push(marker);
+                    });
+                    
+                    if (stops.length > 0) {
+                        const bounds = L.latLngBounds(stops.map(s => [s.latitude, s.longitude]));
+                        stopsMap.fitBounds(bounds, { padding: [20, 20] });
+                    }
+                }
+
+                function toggleStop(index) {
+                    const stop = stops[index];
+                    const existingIndex = selectedStops.findIndex(s => s.id === stop.id);
+                    
+                    if (existingIndex >= 0) {
+                        selectedStops.splice(existingIndex, 1);
+                    } else {
+                        selectedStops.push(stop);
+                    }
+                    
+                    renderStopsList();
+                    addStopMarkers();
+                }
+
+                function updateSelectedStopsCount() {
+                    const countElement = document.getElementById('selected-stops-count');
+                    if (countElement) {
+                        countElement.textContent = selectedStops.length;
+                    }
+                }
+
+                function confirmSelectedStops() {
+                    const stopsInput = document.getElementById('stops');
+                    const stopsDisplay = document.getElementById('stops-display');
+                    const stopsData = document.getElementById('selected_stops_data');
+                    
+                    if (selectedStops.length > 0) {
+                        const stopNames = selectedStops.map(s => s.name).join(', ');
+                        stopsInput.value = stopNames;
+                        stopsDisplay.textContent = `Selected ${selectedStops.length} stops: ${stopNames}`;
+                        stopsDisplay.classList.add('has-location');
+                        stopsData.value = JSON.stringify(selectedStops);
+                    } else {
+                        stopsInput.value = '';
+                        stopsDisplay.textContent = 'No stops selected';
+                        stopsDisplay.classList.remove('has-location');
+                        stopsData.value = '[]';
+                    }
+                    
+                    closeStopsMap();
+                }
+
+
+            </script>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,72 @@
+Add this at the top to test if CSS loads
+/* body {
+    border-top: 5px solid red !important;
+}
+
+/* Your existing CSS... */
+.chat-message {
+    animation: slideIn 0.3s ease-out;
+} */
+/* Chat specific styles */
+.chat-message {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Typing indicator animation */
+.typing-indicator {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0.6;
+    }
+}
+
+/* Scroll behavior */
+.messages-container {
+    scroll-behavior: smooth;
+}
+
+/* Status indicators */
+.status-online {
+    background-color: #10b981;
+}
+
+.status-away {
+    background-color: #f59e0b;
+}
+
+.status-offline {
+    background-color: #6b7280;
+}
+
+/* Priority badges */
+.priority-high {
+    background-color: #ef4444;
+}
+
+.priority-normal {
+    background-color: #3b82f6;
+}
+
+.priority-low {
+    background-color: #10b981;
+}

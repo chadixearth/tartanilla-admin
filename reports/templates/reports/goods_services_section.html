@@ -1,0 +1,102 @@
+<!-- Post Media Display -->
+{% if report.report_type == 'Goods_Services_Violation' and post_media %}
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+  <div class="border-b border-gray-200 px-6 py-4">
+    <h2 class="text-lg font-semibold text-[#561c24]">Post Media (Evidence)</h2>
+  </div>
+  <div class="p-6">
+    {% if post_media %}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {% for media in post_media %}
+          {% if media.type == 'image' %}
+            <div class="relative">
+              <img src="{{ media.url }}" alt="Post evidence" class="w-full h-64 object-cover rounded-lg border border-gray-300">
+            </div>
+          {% elif media.type == 'video' %}
+            <div class="relative">
+              <video controls class="w-full h-64 object-cover rounded-lg border border-gray-300">
+                <source src="{{ media.url }}" type="video/mp4">
+              </video>
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-gray-500 text-center py-8">No media attached</p>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Approve/Reject Actions -->
+{% if report.report_type == 'Goods_Services_Violation' and report.status == 'pending' %}
+<div class="bg-white rounded-lg shadow-sm border border-gray-200">
+  <div class="border-b border-gray-200 px-6 py-4">
+    <h2 class="text-lg font-semibold text-[#561c24]">Admin Decision</h2>
+  </div>
+  <div class="p-6">
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+      <p class="text-red-800 text-sm"><strong>Is this violation true?</strong> Make your decision below.</p>
+    </div>
+
+    <form id="goodsServicesForm" class="space-y-4">
+      {% csrf_token %}
+      
+      <div class="space-y-3">
+        <label class="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-red-400 transition">
+          <input type="radio" name="decision" value="approve" required class="w-4 h-4">
+          <div class="ml-4">
+            <div class="font-semibold text-red-600">✓ APPROVE - Violation is TRUE</div>
+            <p class="text-sm text-gray-600">Driver will be suspended for violating platform rules</p>
+          </div>
+        </label>
+        
+        <label class="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-green-400 transition">
+          <input type="radio" name="decision" value="reject" required class="w-4 h-4">
+          <div class="ml-4">
+            <div class="font-semibold text-green-600">✗ REJECT - Violation is FALSE</div>
+            <p class="text-sm text-gray-600">Report is invalid, no action taken</p>
+          </div>
+        </label>
+      </div>
+      
+      <div>
+        <label for="gs_notes" class="block font-medium mb-2">Why? <span class="text-red-500">*</span></label>
+        <textarea id="gs_notes" name="admin_notes" rows="3" required 
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2" 
+                  placeholder="Explain your decision..."></textarea>
+      </div>
+      
+      <div>
+        <label for="suspension_days" class="block font-medium mb-2">Suspension Days (if approved)</label>
+        <input type="number" id="suspension_days" name="suspension_days" min="1" max="365" value="7"
+               class="w-full border border-gray-300 rounded-lg px-3 py-2">
+      </div>
+      
+      <button type="submit" class="w-full bg-[#561c24] hover:bg-[#6d2631] text-white py-3 px-4 rounded-lg font-medium">
+        Submit Decision
+      </button>
+    </form>
+  </div>
+</div>
+
+{% elif report.report_type == 'Goods_Services_Violation' and report.status == 'resolved' %}
+<div class="bg-white rounded-lg shadow-sm border border-gray-200">
+  <div class="border-b border-gray-200 px-6 py-4">
+    <h2 class="text-lg font-semibold text-[#561c24]">Decision</h2>
+  </div>
+  <div class="p-6">
+    {% if report.decision == 'approve' %}
+      <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p class="text-red-800"><strong>✓ APPROVED</strong> - Violation confirmed</p>
+        <p class="text-sm text-red-700 mt-2">Driver has been suspended</p>
+      </div>
+    {% elif report.decision == 'reject' %}
+      <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+        <p class="text-green-800"><strong>✗ REJECTED</strong> - Violation not confirmed</p>
+        <p class="text-sm text-green-700 mt-2">No action taken</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}

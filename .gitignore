@@ -1,0 +1,34 @@
+# Virtual environment
+venv/
+env/
+
+# Django
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.coverage
+.pytest_cache/
+
+# Environment variables
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Media and static files (in production)
+media/
+staticfiles/
+
+# Logs
+*.log
+
+# Local settings
+local_settings.py

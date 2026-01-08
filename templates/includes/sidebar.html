@@ -1,0 +1,225 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/sidebar.css' %}?v=rail-dot-1">
+
+<div class="sidebar">
+  <!-- Mobile Close Button -->
+  <button onclick="toggleMobileSidebar()" class="md:hidden absolute top-4 right-4 text-white hover:text-red-400 z-10">
+    <i class="fas fa-times text-2xl"></i>
+  </button>
+  
+  <div class="sidebar-content">
+    <!-- Logo Section -->
+    <div class="sidebar-header">
+      <img src="{% static 'img/tartrack_whitel.png' %}" alt="Tartanilla Logo" class="sidebar-logo" />
+      <span class="sidebar-subtitle">Cebu Tartanilla Online</span>
+      <span class="sidebar-subtitle">Booking</span>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="sidebar-nav">
+      <ul class="nav-list">
+        <li class="nav-item" data-page="dashboard">
+          <a href="{% url 'accounts:dashboard' %}" class="nav-link">
+            <div class="nav-content">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
+                <path d="M3 9L12 2L21 9V20C21 21.1 20.1 22 19 22H5C3.9 22 3 21.1 3 20V9Z" stroke="currentColor" stroke-width="2" fill="none"/>
+              </svg>
+              <span class="nav-text">Dashboard</span>
+            </div>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a href="/announcements/" class="nav-link">
+            <div class="nav-content">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z" stroke="currentColor" stroke-width="2"/>
+                <path d="M19 13V19C19 20.1 18.1 21 17 21H7C5.9 21 5 20.1 5 19V13" stroke="currentColor" stroke-width="2"/>
+              </svg>
+              <span class="nav-text">Announcements</span>
+            </div>
+          </a>
+        </li>
+
+        <!-- Users Dropdown -->
+        <li class="nav-item">
+          <div onclick="toggleDropdown(this)" class="nav-link flex items-center justify-between cursor-pointer">
+            <div class="flex items-center space-x-2">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
+                <circle cx="9" cy="7" r="3" stroke="currentColor" stroke-width="2"/>
+                <circle cx="17" cy="7" r="3" stroke="currentColor" stroke-width="2"/>
+                <path d="M2 21v-2c0-2.2 3.6-4 8-4s8 1.8 8 4v2" stroke="currentColor" stroke-width="2"/>
+                <path d="M14 21v-2c0-1.5 1.8-2.8 4-3" stroke="currentColor" stroke-width="2"/>
+              </svg>
+              <span class="nav-text" style="margin-left:16px;">Users</span>
+            </div>
+            <svg class="w-4 h-4 transition-transform duration-200" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M7.41 8.59L12 13.17L16.59 8.59L18 10L12 16L6 10L7.41 8.59Z"/>
+            </svg>
+          </div>
+
+          <!-- Rail list + moving dot -->
+          <ul class="dropdown-items rail-list hidden">
+            <span class="rail-dot" aria-hidden="true"></span>
+            <li class="dropdown-item"><a href="{% url 'accounts:listOfCustomers' %}" class="dropdown-link">Customer</a></li>
+            <li class="dropdown-item"><a href="{% url 'accounts:listOfDrivers' %}" class="dropdown-link">Cochero</a></li>
+            <li class="dropdown-item"><a href="{% url 'accounts:listOfOwners' %}" class="dropdown-link">Owner</a></li>
+            <li class="dropdown-item"><a href="{% url 'accounts:pendingRegistration' %}" class="dropdown-link">Pending Registration</a></li>
+          </ul>
+        </li>
+
+        <!-- Other navigation items -->
+        <li class="nav-item">
+          <a href="{% url 'route_management' %}" class="nav-link">
+            <div class="nav-content">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
+                <path d="M21 10C21 16.667 12 23 12 23S3 16.667 3 10C3 5.582 7.029 2 12 2S21 5.582 21 10Z" stroke="currentColor" stroke-width="2"/>
+                <circle cx="12" cy="10" r="3" stroke="currentColor" stroke-width="2"/>
+              </svg>
+              <span class="nav-text">Route Management</span>
+            </div>
+          </a>
+        </li>
+
+        <!-- Earnings & Shares WITH badge -->
+        <li class="nav-item">
+          <a href="{% url 'earningsAndshares' %}" class="nav-link" id="earningsNavLink"
+             data-pending-count-initial="{{ pending_payouts|length|default:0 }}">
+            <div class="nav-content">
+              <span class="nav-icon-wrap">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <ellipse cx="12" cy="6" rx="8" ry="3" stroke="currentColor" stroke-width="2"/>
+                  <path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6" stroke="currentColor" stroke-width="2"/>
+                  <path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" stroke="currentColor" stroke-width="2"/>
+                </svg>
+                <span id="earningsBadge" class="notification-badge is-on-icon {% if not pending_payouts %}hidden{% endif %}">
+                  {% if pending_payouts %}{{ pending_payouts|length }}{% else %}0{% endif %}
+                </span>
+              </span>
+              <span class="nav-text">Earnings & Shares</span>
+            </div>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a href="{% url 'accounts:listOfTartanillas' %}" class="nav-link">
+            <div class="nav-content">
+              <svg class="nav-icon" viewBox="0 0 23 23" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
+              </svg>
+              <span class="nav-text">Tartanilla Carriages</span>
+            </div>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a href="{% url 'chat_support' %}" id="chatSupportLink" class="nav-link">
+            <div class="nav-content">
+              <span class="nav-icon-wrap">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z"
+                        stroke="currentColor" stroke-width="2"/>
+                </svg>
+        <span id="chatSupportBadge" class="notification-badge is-on-icon hidden"></span>
+              </span>
+              <span class="nav-text">Chat Support</span>
+            </div>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a href="{% url 'tourpackage:view' %}" class="nav-link">
+            <div class="nav-content">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
+                <path d="M21 16V8C21 6.9 20.1 6 19 6H5C3.9 6 3 6.9 3 8V16C3 17.1 3.9 18 5 18H19C20.1 18 21 17.1 21 16Z" stroke="currentColor" stroke-width="2"/>
+                <path d="M7 6V4C7 2.9 7.9 2 9 2H15C16.1 2 17 2.9 17 4V6" stroke="currentColor" stroke-width="2"/>
+              </svg>
+              <span class="nav-text">Tour Package</span>
+            </div>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a href="{% url 'tourpackage:view_bookings' %}" class="nav-link">
+            <div class="nav-content">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
+                <path d="M16 4H18C19.1 4 20 4.9 20 6V18C20 19.1 19.1 20 18 20H6C4.9 20 4 19.1 4 18V6C4 4.9 4.9 4 6 4H8" stroke="currentColor" stroke-width="2"/>
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" stroke="currentColor" stroke-width="2"/>
+              </svg>
+              <span class="nav-text">Booking</span>
+            </div>
+          </a>
+        </li>
+
+        
+
+        <li class="nav-item">
+          <a href="{% url 'reports_list' %}" class="nav-link" id="reportsNavLink"
+             data-pending-count-initial="{{ pending_reports|length|default:0 }}">
+            <div class="nav-content">
+              <span class="nav-icon-wrap">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M9 2V6C9 7.1 9.9 8 11 8H15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M15 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V9L15 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M8 13H16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M8 17H16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span id="reportsBadge" class="notification-badge is-on-icon {% if not pending_reports %}hidden{% endif %}">
+                  {% if pending_reports %}{{ pending_reports|length }}{% else %}0{% endif %}
+                </span>
+              </span>
+              <span class="nav-text">Reports</span>
+            </div>
+          </a>
+        </li>
+
+
+        <li class="nav-item">
+          <a href="{% url 'auditlogs_view' %}" class="nav-link">
+            <div class="nav-content">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2"/>
+                <path d="M7 8H17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M7 12H17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M7 16H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <circle cx="17" cy="16" r="1" fill="currentColor"/>
+              </svg>
+              <span class="nav-text">Audit Logs</span>
+            </div>
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+
+  <!-- Footer with admin email & logout -->
+  <div class="sidebar-footer h-14 flex items-center bg-primary-dark text-white px-4">
+    <div class="flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap">
+      <svg class="admin-icon ml-4" viewBox="0 0 24 24" fill="none">
+        <path d="M20 21V19C20 17.9 19.1 17 18 17H6C4.9 17 4 17.9 4 19V21" stroke="currentColor" stroke-width="2"/>
+        <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      <span class="admin-text max-w-[220px]">
+        {% if request.user.is_authenticated and request.user.email %}
+          {{ request.user.email }}
+        {% elif request.user.is_authenticated %}
+          {{ request.user.get_username|default:request.user.username }}
+        {% else %}
+          Admin
+        {% endif %}
+      </span>
+    </div>
+    <form method="post" action="{% url 'accounts:logout' %}" class="ml-auto mr-5">
+      {% csrf_token %}
+      <button type="submit" class="hover:text-red-500 transition-colors" title="Logout">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" />
+        </svg>
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Load the sidebar behavior -->
+<script src="{% static 'js/sidebar.js' %}?v=rail-dot-1"></script>

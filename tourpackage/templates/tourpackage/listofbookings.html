@@ -1,0 +1,522 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bookings</title>
+  <!-- Tailwind v2 -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  {% csrf_token %}
+
+  <style>
+    /* match Customers page vibe */
+    .row-card:hover { box-shadow: 0 2px 18px rgba(0,0,0,.06); }
+    .thead-shadow::after{
+      content:"";
+      position:absolute;
+      left:0; right:0; bottom:-1px; height:1px;
+      background:linear-gradient(to right, rgba(0,0,0,.08), rgba(0,0,0,.02), rgba(0,0,0,.08));
+    }
+    input, select { transition: box-shadow .2s, border-color .2s, background-color .2s; }
+  </style>
+</head>
+
+<body class="p-0 md:p-4 ml-5 bg-gray-50">
+  {% include 'base.html' %}
+
+  <div class="flex flex-col md:ml-64 p-4 md:p-6">
+    <div class="bg-white rounded-none md:rounded-2xl border border-[#531B24] w-full overflow-hidden">
+
+      <!-- Top bar (aligned with Customers page) -->
+      <div class="px-4 md:px-6 pt-4 md:pt-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h2 class="text-2xl md:text-3xl font-semibold tracking-tight text-[#531B24]">Bookings</h2>
+            <p class="text-sm text-[#531B24] opacity-70">All reservations & tours</p>
+          </div>
+
+          <div class="w-full md:w-auto flex flex-col sm:flex-row gap-2 sm:items-center">
+            <!-- Search -->
+            <div class="relative text-sm w-full sm:w-64">
+              <input
+                type="text"
+                id="searchInput"
+                placeholder="Search bookings…"
+                class="pl-10 pr-4 py-2 w-full h-8 rounded-xl border border-[#531B24] focus:outline-none focus:ring-1 focus:ring-[#531B24] bg-white"
+              />
+              <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-[#531B24]"></i>
+            </div>
+
+            <!-- Status -->
+            <div class="text-sm">
+              <div class="pl-3 pr-3 w-fit h-8 rounded-xl border border-[#531B24] text-gray-700 focus-within:ring-1 focus-within:ring-[#531B24] bg-white">
+                <label for="statusFilter" class="sr-only">Status</label>
+                <select id="statusFilter" class="bg-transparent text-sm pr-6 focus:outline-none text-gray-700 h-8">
+                  <option value="">All</option>
+                  <option value="pending">Pending</option>
+                  <option value="waiting_for_driver">Waiting for Driver</option>
+                  <option value="driver_assigned">Driver Assigned</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {% if error %}
+      <div class="mx-4 md:mx-6 my-3 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">
+        {{ error }}
+      </div>
+      {% endif %}
+
+      <!-- Table wrapper (polish to match Customers) -->
+      <div class="px-4 md:px-6 pb-4 md:pb-6">
+        <div class="overflow-x-auto rounded-xl mt-4 text-sm">
+          <div class="border border-gray-200 rounded-xl overflow-hidden">
+            <table class="min-w-full">
+              <thead class="bg-gray-100 relative thead-shadow h-[60px]">
+                <tr class="text-gray-600 text-xs uppercase tracking-wide">
+                  <th class="px-4 py-3 text-center">
+                    <div class="flex items-center justify-center">
+                      <span>ID</span>
+                      <i class="fa-solid fa-sort ml-2"></i>
+                    </div>
+                  </th>
+                  <th class="px-4 py-3 text-left">Customer Name</th>
+                  <th class="px-4 py-3 text-left">Tour Package</th>
+                  <th class="px-4 py-3 text-center">Pax</th>
+                  <th class="px-4 py-3 text-center">Booking Date</th>
+                  <th class="px-4 py-3 text-center">Tour Date</th>
+                  <th class="px-4 py-3 text-center">
+                    <div class="flex items-center justify-center">
+                      <span>Booking Status</span>
+                      <i class="fa-solid fa-sort ml-2"></i>
+                    </div>
+                  </th>
+                  <th class="px-4 py-3 text-center">
+                    <div class="flex items-center justify-center">
+                      <span>Payment Status</span>
+                      <i class="fa-solid fa-sort ml-2"></i>
+                    </div>
+                  </th>
+                  <th class="px-4 py-3 text-left">Cochero</th>
+                  <th class="px-4 py-3 text-center">Action</th>
+                </tr>
+              </thead>
+
+              <tbody class="bg-white divide-y divide-gray-100" id="bookingsTableBody">
+                {% for booking in bookings %}
+                <tr class="hover:bg-gray-50 transition row-card booking-row"
+                    data-status="{{ booking.status|lower }}">
+                  <td class="px-4 py-3 text-center">{{ forloop.counter }}</td>
+
+                  <td class="px-4 py-3 text-gray-800">
+                    {{ booking.customer_name|default:"N/A" }}
+                  </td>
+
+                  <td class="px-4 py-3 text-gray-800">
+                    <div class="line-clamp-2 leading-snug max-h-[2.8em] overflow-hidden">
+                      {{ booking.package_name|default:"N/A" }}
+                    </div>
+                  </td>
+
+                  <td class="px-4 py-3 text-center">{{ booking.number_of_pax|default:"0" }}</td>
+                  <td class="px-4 py-3 text-center">{{ booking.created_date_formatted|default:"N/A" }}</td>
+                  <td class="px-4 py-3 text-center">{{ booking.scheduled_tour_date|default:"TBD" }}</td>
+
+                  <td class="px-4 py-3 text-center">
+                    <span class="px-2 py-1 rounded-full text-xs font-medium
+                      {% if booking.status == 'pending' %}bg-yellow-100 text-yellow-800
+                      {% elif booking.status == 'waiting_for_driver' %}bg-blue-100 text-blue-800
+                      {% elif booking.status == 'driver_assigned' %}bg-green-100 text-green-800
+                      {% elif booking.status == 'confirmed' %}bg-green-100 text-green-800
+                      {% elif booking.status == 'cancelled' %}bg-red-100 text-red-800
+                      {% elif booking.status == 'completed' %}bg-blue-100 text-blue-800
+                      {% else %}bg-gray-100 text-gray-800{% endif %}">
+                      {{ booking.status|default:"waiting_for_driver"|title }}
+                    </span>
+                  </td>
+
+                  <td class="px-4 py-3 text-center">
+                    <span class="px-2 py-1 rounded-full text-xs font-medium
+                      {% if booking.payment_status == 'paid' %}bg-green-100 text-green-800
+                      {% elif booking.payment_status == 'pending' %}bg-yellow-100 text-yellow-800
+                      {% else %}bg-gray-100 text-gray-800{% endif %}">
+                      {{ booking.payment_status|title|default:"Pending" }}
+                    </span>
+                  </td>
+
+                  <td class="px-4 py-3 text-gray-800">
+                    {% if booking.status == 'waiting_for_driver' %}
+                      <span class="text-blue-600 text-xs">Waiting...</span>
+                    {% elif booking.status == 'driver_assigned' or booking.status == 'confirmed' %}
+                      <span class="text-gray-800 text-xs">{{ booking.driver_name|default:"TBD" }}</span>
+                    {% elif booking.status == 'completed' %}
+                      <span class="text-gray-800 text-xs">{{ booking.driver_name|default:"—" }}</span>
+                    {% else %}
+                      <span class="text-gray-400 text-xs">—</span>
+                    {% endif %}
+                  </td>
+
+                  <td class="py-3 text-center space-x-2">
+                    <button
+                      onclick="viewBookingDetails('{{ booking.id }}')"
+                      class="bg-[#531B24] hover:bg-[#6B2332] text-white px-2 py-1 rounded text-xs">
+                      View
+                    </button>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="10" class="px-4 py-8 text-center text-gray-500">
+                    No bookings found
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Pagination (kept as-is, color-tweaked) -->
+        {% if total_pages > 1 %}
+        <div class="flex items-center justify-between mt-6">
+          <div class="text-sm text-gray-700">
+            Showing {{ showing_start }} to {{ showing_end }} of {{ total_items }} bookings
+          </div>
+          <div class="flex items-center space-x-2">
+            {% if has_previous %}
+              <a href="?page=1" class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                <i class="fas fa-angle-double-left"></i>
+              </a>
+              <a href="?page={{ previous_page }}" class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                <i class="fas fa-angle-left"></i>
+              </a>
+            {% endif %}
+
+            {% for num in page_range %}
+              {% if current_page == num %}
+                <span class="px-3 py-2 text-sm font-medium text-white bg-[#531B24] border border-[#531B24] rounded-md">
+                  {{ num }}
+                </span>
+              {% elif num > current_page|add:'-3' and num < current_page|add:'3' %}
+                <a href="?page={{ num }}" class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                  {{ num }}
+                </a>
+              {% endif %}
+            {% endfor %}
+
+            {% if has_next %}
+              <a href="?page={{ next_page }}" class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                <i class="fas fa-angle-right"></i>
+              </a>
+              <a href="?page={{ total_pages }}" class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                <i class="fas fa-angle-double-right"></i>
+              </a>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Booking Details Modal (unchanged, just keeps your brand button) -->
+  <div id="bookingModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-50 flex justify-center items-center md:ml-64">
+    <div class="bg-white w-full max-w-3xl mx-4 rounded-2xl shadow-2xl relative max-h-[90vh] flex flex-col">
+      <div class="bg-gradient-to-r from-[#531B24] to-[#6B2332] text-white p-6 rounded-t-2xl">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="bg-white bg-opacity-20 p-2 rounded-lg">
+              <i class="fas fa-calendar-check text-xl"></i>
+            </div>
+            <div>
+              <h2 class="text-xl font-semibold">Booking Details</h2>
+              <p class="text-white text-opacity-80 text-sm">Reference: <span id="bkRefHeader">Loading...</span></p>
+            </div>
+          </div>
+          <button onclick="closeBookingModal()" class="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition-colors">
+            <i class="fas fa-times text-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- (modal body kept as-is from your original) -->
+      <div class="p-6 space-y-6 overflow-y-auto flex-1">
+        <!-- Customer Information -->
+        <div class="bg-gray-50 rounded-xl p-4">
+          <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+            <i class="fas fa-user text-[#531B24]"></i>
+            Customer Information
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+              <div class="bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900" id="bkCustomer">Loading...</div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Contact Number</label>
+              <div class="bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900" id="bkContact">Loading...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Booking Information -->
+        <div class="bg-gray-50 rounded-xl p-4">
+          <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+            <i class="fas fa-map-marked-alt text-[#531B24]"></i>
+            Booking Information
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Reference Number</label>
+              <div class="bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 font-mono" id="bkRef">Loading...</div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Booking Date</label>
+              <div class="bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900" id="bkBookingDate">Loading...</div>
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Tour Package</label>
+              <div class="bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900" id="bkPackage">Loading...</div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Number of Passengers</label>
+              <div class="bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900" id="bkPax">Loading...</div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Tour Date</label>
+              <div class="bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900" id="bkTourDate">Loading...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tour Package Images -->
+        <div class="bg-gray-50 rounded-xl p-4">
+          <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+            <i class="fas fa-images text-[#531B24]"></i>
+            Tour Package Images
+          </h3>
+          <div id="bkPackageImages" class="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div class="text-center text-gray-500 text-sm col-span-full">Loading images...</div>
+          </div>
+        </div>
+
+        <!-- Pickup Information -->
+        <div class="bg-gray-50 rounded-xl p-4">
+          <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+            <i class="fas fa-map-marker-alt text-[#531B24]"></i>
+            Pickup Information
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Pickup Address</label>
+              <div class="bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900" id="bkPickupAddress">Loading...</div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Pickup Time</label>
+              <div class="bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900" id="bkPickupTime">Loading...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status & Payment -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-gray-50 rounded-xl p-4">
+            <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+              <i class="fas fa-info-circle text-[#531B24]"></i>
+              Status
+            </h3>
+            <div class="space-y-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Booking Status</label>
+                <div class="bg-white border border-gray-300 rounded-lg px-3 py-2" id="bkStatus">Loading...</div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
+                <div class="bg-white border border-gray-300 rounded-lg px-3 py-2" id="bkPaymentStatus">Loading...</div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Assigned Cochero</label>
+                <div class="bg-white border border-gray-300 rounded-lg px-3 py-2" id="bkDriver">Loading...</div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 rounded-xl p-4">
+            <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+              <i class="fas fa-peso-sign text-[#531B24]"></i>
+              Payment
+            </h3>
+            <div class="bg-white border-2 border-[#531B24] rounded-xl p-4 text-center">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Total Amount</label>
+              <div class="text-2xl font-bold text-[#531B24]" id="bkTotal">Loading...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-gray-50 px-6 py-4 rounded-b-2xl border-t">
+        <div class="flex justify-between items-center">
+          <p class="text-sm text-gray-500">Last updated: <span id="lastUpdated">Just now</span></p>
+          <button onclick="closeBookingModal()" class="bg-[#531B24] hover:bg-[#6B2332] text-white px-6 py-2 rounded-lg transition-colors">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Your original scripts (unchanged) -->
+  <script>
+    // Search
+    $('#searchInput').on('keyup', function () {
+      var value = $(this).val().toLowerCase();
+      $('.booking-row').filter(function () {
+        $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+      });
+    });
+
+    // Status filter
+    $('#statusFilter').on('change', function () {
+      var status = $(this).val().toLowerCase();
+      if (status === '') {
+        $('.booking-row').show();
+      } else {
+        $('.booking-row').each(function () {
+          var rowStatus = $(this).data('status');
+          $(this).toggle(rowStatus === status);
+        });
+      }
+    });
+
+    function updateBookingStatus(bookingId, newStatus) {
+      showConfirmModal('Are you sure you want to ' + (newStatus === 'confirmed' ? 'accept' : newStatus === 'cancelled' ? 'decline' : 'update') + ' this booking?', () => {
+        $.ajax({
+          url: '{% url "tourpackage:update_booking_status" %}',
+          method: 'POST',
+          data: JSON.stringify({ booking_id: bookingId, status: newStatus }),
+          contentType: 'application/json',
+          headers: { 'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val() },
+          success: function (response) {
+            if (response.success) {
+              showSuccessModal('Booking status updated successfully!');
+              setTimeout(() => location.reload(), 1500);
+            } else {
+              showErrorModal('Error: ' + response.error);
+            }
+          },
+          error: function (xhr, status, error) {
+            showErrorModal('Error updating booking status: ' + error);
+          }
+        });
+      });
+    }
+
+    // Modal helpers (same as your version)…
+    const bkSet = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val ?? 'N/A'; };
+    const fmtDate = (iso) => {
+      if (!iso) return 'N/A';
+      try { const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' }); }
+      catch { return iso; }
+    };
+    const peso = (n) => `₱${Number(n || 0).toLocaleString(undefined,{ minimumFractionDigits:2, maximumFractionDigits:2 })}`;
+
+    function viewBookingDetails(bookingId) {
+      const modal = document.getElementById('bookingModal');
+      if (modal) modal.classList.remove('hidden');
+      const loadingText = 'Loading...';
+      ['bkRefHeader','bkRef','bkBookingDate','bkCustomer','bkContact','bkPackage','bkPax','bkTourDate','bkPickupTime','bkPickupAddress','bkStatus','bkPaymentStatus','bkDriver','bkTotal'].forEach(id=>bkSet(id,loadingText));
+
+      $.get(`/api/tour-booking/${bookingId}/`)
+        .done(function (resp) {
+          const b = resp?.data || {};
+          const refNo = b.booking_reference || b.id || 'N/A';
+          bkSet('bkRefHeader', refNo);
+          bkSet('bkRef', refNo);
+          bkSet('bkBookingDate', fmtDate(b.booking_date || b.created_at));
+          bkSet('bkCustomer', b.customer_name || 'N/A');
+          bkSet('bkContact', b.contact_number || 'N/A');
+          bkSet('bkPackage', b.package_name || 'N/A');
+          bkSet('bkPax', b.number_of_pax || '0');
+          bkSet('bkTourDate', fmtDate(b.booking_date || b.tour_date || b.scheduled_tour_date));
+          bkSet('bkPickupTime', b.pickup_time || 'N/A');
+          bkSet('bkPickupAddress', b.pickup_address || 'N/A');
+
+          const statusRaw = (b.status || 'pending').toString().replace(/_/g, ' ');
+          const payRaw = (b.payment_status || 'pending').toString().replace(/_/g, ' ');
+          const statusFormatted = statusRaw.charAt(0).toUpperCase() + statusRaw.slice(1);
+          const payFormatted = payRaw.charAt(0).toUpperCase() + payRaw.slice(1);
+
+          document.getElementById('bkStatus').innerHTML =
+            `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+              b.status === 'completed' ? 'bg-green-100 text-green-800' :
+              b.status === 'confirmed' ? 'bg-blue-100 text-blue-800'   :
+              b.status === 'cancelled' ? 'bg-red-100 text-red-800'     :
+                                         'bg-yellow-100 text-yellow-800'
+            }">${statusFormatted}</span>`;
+
+          document.getElementById('bkPaymentStatus').innerHTML =
+            `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+              b.payment_status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+            }">${payFormatted}</span>`;
+
+          const driverLabel = b.driver_name ? `${b.driver_name}${b.driver_id ? ' (ID: ' + b.driver_id + ')' : ''}` : 'Not assigned yet';
+          bkSet('bkDriver', driverLabel);
+          bkSet('bkTotal', peso(b.total_amount));
+          
+          const imagesContainer = document.getElementById('bkPackageImages');
+          let imagesHTML = '';
+          
+          if (b.verification_photo_url) {
+            imagesHTML += `<div class="relative group overflow-hidden rounded-lg bg-gray-200 aspect-square"><img src="${b.verification_photo_url}" alt="Verification photo" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" /><a href="${b.verification_photo_url}" target="_blank" class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300"><i class="fas fa-expand text-white text-lg"></i></a><span class="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded">Verification</span></div>`;
+          }
+          
+          if (b.package_id) {
+            $.get(`/api/tourpackage/${b.package_id}/`).done(function (pkgResp) {
+              const pkg = pkgResp?.data || {};
+              const photos = pkg.photos || [];
+              if (Array.isArray(photos) && photos.length > 0) {
+                photos.forEach((photo, idx) => {
+                  const photoUrl = typeof photo === 'string' ? photo : photo.url || photo;
+                  if (photoUrl) {
+                    imagesHTML += `<div class="relative group overflow-hidden rounded-lg bg-gray-200 aspect-square"><img src="${photoUrl}" alt="Tour image ${idx + 1}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" /><a href="${photoUrl}" target="_blank" class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300"><i class="fas fa-expand text-white text-lg"></i></a></div>`;
+                  }
+                });
+              }
+              imagesContainer.innerHTML = imagesHTML || '<div class="text-center text-gray-500 text-sm col-span-full">No images available</div>';
+            }).fail(function () {
+              imagesContainer.innerHTML = imagesHTML || '<div class="text-center text-gray-500 text-sm col-span-full">Unable to load package images</div>';
+            });
+          } else {
+            imagesContainer.innerHTML = imagesHTML || '<div class="text-center text-gray-500 text-sm col-span-full">No images available</div>';
+          }
+        })
+        .fail(function (xhr) {
+          const msg = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Failed to load booking details';
+          bkSet('bkRefHeader', 'Error');
+          bkSet('bkCustomer', msg);
+        });
+    }
+
+    function closeBookingModal() {
+      const modal = document.getElementById('bookingModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    document.getElementById('bookingModal')?.addEventListener('click', function (e) {
+      if (e.target === this) closeBookingModal();
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && !document.getElementById('bookingModal').classList.contains('hidden')) {
+        closeBookingModal();
+      }
+    });
+  </script>
+</body>
+</html>

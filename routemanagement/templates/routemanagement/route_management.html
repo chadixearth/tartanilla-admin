@@ -1,0 +1,3584 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Route Management - TarTrack{% endblock %}
+
+{% block extra_css %}
+<!-- Custom Modal -->
+{% include 'routemanagement/custom_modal.html' %}
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
+      crossorigin=""/>
+
+<!-- Leaflet Draw CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
+
+<!-- Leaflet Routing Machine CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+
+<style>
+    .map-container {
+        height: 100% !important;
+        width: 100% !important;
+        position: relative;
+        display: block !important;
+        overflow: hidden !important;
+    }
+    
+    #map {
+        height: 100% !important;
+        width: 100% !important;
+        border-radius: 8px;
+        position: relative;
+        z-index: 0;
+        background: #f0f0f0;
+        display: block !important;
+        visibility: visible !important;
+    }
+    
+    .map-controls {
+        position: absolute;
+        top: 5px;
+        left: 24px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(83, 27, 36, 0.15);
+        border: 1px solid rgba(83, 27, 36, 0.1);
+        z-index: 1000;
+        min-width: 280px;
+        max-width: 380px;
+        max-height: calc(100vh - 120px);
+        overflow: hidden;
+        font-family: 'Poppins', sans-serif;
+    }
+    
+    @media (max-width: 768px) {
+        .map-controls {
+            left: 10px;
+            right: 10px;
+            min-width: auto;
+            max-width: calc(100vw - 20px);
+            max-height: 50vh;
+        }
+    }
+    
+    .control-header {
+        background: #531B24;
+        color: white;
+        padding: 20px 24px;
+        font-weight: 600;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .control-content {
+        padding: 20px;
+        max-height: calc(100vh - 200px);
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(83, 27, 36, 0.3) transparent;
+    }
+    
+    .control-content::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .control-content::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    
+    .control-content::-webkit-scrollbar-thumb {
+        background: rgba(83, 27, 36, 0.3);
+        border-radius: 3px;
+    }
+    
+    .tool-section {
+        margin-bottom: 28px;
+        position: relative;
+    }
+    
+    .tool-section:last-child {
+        margin-bottom: 0;
+    }
+    
+    .tool-section::after {
+        content: '';
+        position: absolute;
+        bottom: -14px;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: rgba(83, 27, 36, 0.1);
+    }
+    
+    .tool-section:last-child::after {
+        display: none;
+    }
+    
+    .tool-title {
+        font-weight: 600;
+        color: #531B24;
+        margin-bottom: 16px;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: 'Poppins', sans-serif;
+    }
+    
+    .tool-title i {
+        color: #531B24;
+        font-size: 16px;
+    }
+    
+    .tool-button {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        width: 100%;
+        padding: 12px 16px;
+        margin-bottom: 8px;
+        background: #F5F5F5;
+        border: 1px solid #e5e5e5;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        font-size: 14px;
+        font-weight: 400;
+        color: #333;
+        gap: 12px;
+        font-family: 'Poppins', sans-serif;
+    }
+    
+    .tool-button:hover {
+        background: #6A2931;
+        color: white;
+        border-color: #6A2931;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(83, 27, 36, 0.2);
+    }
+    
+    .tool-button.active {
+        background: #531B24;
+        color: white;
+        border-color: #531B24;
+        box-shadow: 0 2px 8px rgba(83, 27, 36, 0.3);
+    }
+    
+    .tool-button i {
+        font-size: 16px;
+        width: 18px;
+        text-align: center;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-label {
+        display: block;
+        font-weight: 500;
+        margin-bottom: 6px;
+        font-size: 13px;
+        color: #531B24;
+        font-family: 'Poppins', sans-serif;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #e5e5e5;
+        border-radius: 6px;
+        font-size: 14px;
+        background: white;
+        transition: all 0.25s ease;
+        font-family: 'Poppins', sans-serif;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #531B24;
+        box-shadow: 0 0 0 3px rgba(83, 27, 36, 0.1);
+    }
+    
+    .form-control::placeholder {
+        color: #adb5bd;
+        font-style: italic;
+    }
+    
+    .color-picker {
+        width: 50px;
+        height: 35px;
+        padding: 0;
+        border: 1px solid #e5e5e5;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.25s ease;
+    }
+    
+    .color-picker:hover {
+        border-color: #531B24;
+        box-shadow: 0 0 0 3px rgba(83, 27, 36, 0.1);
+    }
+    
+    .save-button {
+        background: #28a745;
+        color: white;
+        border: none;
+        padding: 12px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        width: 100%;
+        margin-top: 16px;
+        font-size: 14px;
+        transition: all 0.25s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-family: 'Poppins', sans-serif;
+    }
+    
+    .save-button:hover:not(:disabled) {
+        background: #218838;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+    }
+    
+    .save-button:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+    
+    .clear-button {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        width: 100%;
+        margin-top: 8px;
+        transition: all 0.25s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        font-family: 'Poppins', sans-serif;
+    }
+    
+    .clear-button:hover {
+        background: #c82333;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+    }
+    
+    .items-list {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        margin-top: 10px;
+    }
+    
+    .item-entry {
+        padding: 8px;
+        border-bottom: 1px solid #f1f1f1;
+        font-size: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .item-entry:last-child {
+        border-bottom: none;
+    }
+    
+    .item-info {
+        flex: 1;
+    }
+    
+    .item-actions {
+        display: flex;
+        gap: 5px;
+    }
+    
+    .item-action {
+        padding: 2px 6px;
+        font-size: 10px;
+        border-radius: 3px;
+        border: none;
+        cursor: pointer;
+    }
+    
+    .edit-action {
+        background: #ffc107;
+        color: #212529;
+    }
+    
+    .delete-action {
+        background: #dc3545;
+        color: white;
+    }
+    
+    .toggle-action {
+        background: #17a2b8;
+        color: white;
+    }
+    
+    .map-legend {
+        position: absolute;
+        bottom: 24px;
+        right: 24px;
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(83, 27, 36, 0.15);
+        border: 1px solid rgba(83, 27, 36, 0.1);
+        z-index: 1000;
+        min-width: 220px;
+        font-family: 'Poppins', sans-serif;
+    }
+    
+    @media (max-width: 768px) {
+        .map-legend {
+            bottom: 10px;
+            right: 10px;
+            left: 10px;
+            min-width: auto;
+            padding: 12px;
+            font-size: 12px;
+        }
+        .legend-title {
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+        .legend-item {
+            font-size: 11px;
+            margin-bottom: 6px;
+        }
+    }
+    
+    .legend-title {
+        font-weight: 600;
+        margin-bottom: 16px;
+        color: #531B24;
+        font-size: 15px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .legend-title::before {
+        content: '🗺️';
+        font-size: 16px;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+        font-size: 13px;
+        font-weight: 400;
+        color: #333;
+        padding: 4px 0;
+        transition: all 0.25s ease;
+    }
+    
+    .legend-item:hover {
+        color: #531B24;
+        transform: translateX(2px);
+    }
+    
+    .legend-color {
+        width: 20px;
+        height: 3px;
+        margin-right: 8px;
+        border-radius: 2px;
+    }
+    
+    .legend-point {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    
+    /* Custom Leaflet controls */
+    .leaflet-draw-toolbar {
+        display: none !important;
+    }
+    
+    /* Instruction overlay */
+    .instruction-overlay {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(83, 27, 36, 0.95);
+        color: white;
+        padding: 20px 30px;
+        border-radius: 10px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        z-index: 2000;
+        text-align: center;
+        max-width: 400px;
+        animation: fadeIn 0.3s ease-in;
+    }
+    
+    .instruction-title {
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+    
+    .instruction-text {
+        font-size: 14px;
+        line-height: 1.4;
+    }
+    
+    .success-message {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: #28a745;
+        color: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        z-index: 2000;
+        animation: slideIn 0.3s ease-out;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+        to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+    
+    @keyframes slideIn {
+        from { transform: translateX(100%); }
+        to { transform: translateX(0); }
+    }
+    
+    /* Loading overlay */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        color: white;
+        font-size: 18px;
+    }
+    
+    .loading-spinner {
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top: 4px solid white;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin-right: 15px;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    /* Map loading animation */
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    /* Custom popup styling */
+    .custom-popup .leaflet-popup-content-wrapper {
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+        border: none;
+        padding: 0;
+    }
+    
+    .custom-popup .leaflet-popup-content {
+        margin: 0;
+        padding: 0;
+    }
+    
+    .custom-popup .leaflet-popup-tip {
+        background: white;
+        border: none;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Mobile Menu Button -->
+<button onclick="toggleMobileSidebar()" class="md:hidden fixed top-4 left-4 z-[2000] bg-[#531B24] text-white p-3 rounded-lg shadow-lg">
+    <i class="fas fa-bars"></i>
+</button>
+
+<div class="h-screen flex flex-col overflow-hidden">
+    <div class="p-4 md:p-6 pb-2 flex-shrink-0">
+        <h1 class="text-2xl font-bold text-[#531B24] mb-2">Route Management</h1>
+        <p class="text-gray-600">Manage routes, points, and road highlights for drivers and tourists</p>
+    </div>
+    
+    <div class="flex-1 px-6 pb-6 overflow-hidden">
+        <div class="map-container bg-white rounded-lg shadow-lg h-full">
+        <div id="map">
+            <!-- Loading indicator -->
+            <div id="mapLoading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 1000;">
+                <div style="width: 50px; height: 50px; border: 4px solid #f3f3f3; border-top: 4px solid #531B24; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+                <div style="color: #531B24; font-weight: bold;">Loading Map...</div>
+                <div style="color: #666; font-size: 12px; margin-top: 10px;">Downloading map tiles...</div>
+            </div>
+        </div>
+        
+        <!-- Map Controls Panel -->
+        <div class="map-controls">
+            <div class="control-header">
+                <i class="fas fa-layer-group"></i>
+                <span>Map Controls</span>
+            </div>
+            <div class="control-content">
+                <!-- Drawing Tools -->
+                <div class="tool-section">
+                    <div class="tool-title">
+                        <i class="fas fa-pencil-alt"></i>
+                        Drawing Tools
+                    </div>
+
+                    <button class="tool-button" id="addPoint">
+                        <i class="fas fa-map-pin"></i>
+                        <span>Add Point</span>
+                    </button>
+                    <button class="tool-button" id="highlightRoad">
+                        <i class="fas fa-road"></i>
+                        <span>Highlight Road</span>
+                    </button>
+                    <button class="tool-button" id="addRidehailing" style="background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); color: white;">
+                        <i class="fas fa-route"></i>
+                        <span>Add Route</span>
+                    </button>
+                    <button class="clear-button" id="clearDrawing">
+                        <i class="fas fa-eraser"></i>
+                        <span>Clear Current</span>
+                    </button>
+                </div>
+                
+
+                
+                <!-- Point Configuration -->
+                <div class="tool-section" id="pointConfig" style="display: none;">
+                    <div class="tool-title">
+                        <i class="fas fa-cog"></i>
+                        Point Configuration
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Point Name</label>
+                        <input type="text" class="form-control" id="pointName" placeholder="Enter point name">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Point Type</label>
+                        <select class="form-control" id="pointType">
+                            <option value="pickup">Pickup Point</option>
+                            <option value="dropoff">Drop-off Point</option>
+                            <option value="stop">Stop Point</option>
+                            <option value="landmark">Landmark</option>
+                            <option value="station">Tartanilla Station</option>
+                            <option value="tourist_spot">🏛️ Tourist Attraction</option>
+                            <option value="restaurant">🍽️ Restaurant</option>
+                            <option value="hotel">🏨 Hotel/Accommodation</option>
+                            <option value="shopping">🛍️ Shopping Center</option>
+                            <option value="beach">🏖️ Beach/Resort</option>
+                            <option value="museum">🏛️ Museum/Gallery</option>
+                            <option value="park">🌳 Park/Garden</option>
+                            <option value="church">⛪ Church/Temple</option>
+                            <option value="viewpoint">🌄 Scenic Viewpoint</option>
+                            <option value="emergency">Emergency Point</option>
+                            <option value="parking">Parking Area</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Point Color</label>
+                        <input type="color" class="color-picker" id="pointColor" value="#FF0000">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="pointDescription" rows="2" placeholder="Point description"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tourist Spot Images</label>
+                        <input type="file" class="form-control" id="pointImage" accept="image/*" multiple>
+                        <small class="text-muted">Add multiple photos to showcase this tourist spot (max 5 images)</small>
+                        <div id="imagePreview" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;"></div>
+                    </div>
+                    <button class="save-button prevent-multiple-clicks" id="savePoint" data-prevent-multiple>
+                        <span class="btn-text">
+                            <i class="fas fa-save"></i>
+                            <span>Save Point</span>
+                        </span>
+                        <span class="btn-loading hidden">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <span>Saving...</span>
+                        </span>
+                    </button>
+                </div>
+                
+                <!-- Road Highlight Configuration -->
+                <div class="tool-section" id="roadConfig" style="display: none;">
+                    <div class="tool-title">
+                        <i class="fas fa-palette"></i>
+                        Road Configuration
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Highlight Name</label>
+                        <input type="text" class="form-control" id="roadName" placeholder="Enter highlight name">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Highlight Type</label>
+                        <select class="form-control" id="roadType">
+                            <option value="available">Available Road</option>
+                            <option value="restricted">Restricted Road</option>
+                            <option value="construction">Under Construction</option>
+                            <option value="preferred">Preferred Route</option>
+                            <option value="avoid">Road to Avoid</option>
+                            <option value="tourist_route">Tourist Route</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Highlight Color</label>
+                        <input type="color" class="color-picker" id="roadColor" value="#00FF00">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Stroke Width</label>
+                        <input type="range" class="form-control" id="roadWidth" min="1" max="10" value="3">
+                        <small>Width: <span id="widthValue">3</span>px</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="roadDescription" rows="2" placeholder="Highlight description"></textarea>
+                    </div>
+                    <button class="save-button prevent-multiple-clicks" id="saveRoad" data-prevent-multiple>
+                        <span class="btn-text">
+                            <i class="fas fa-save mr-1"></i>Save Highlight
+                        </span>
+                        <span class="btn-loading hidden">
+                            <i class="fas fa-spinner fa-spin mr-1"></i>Saving...
+                        </span>
+                    </button>
+                </div>
+
+                <!-- Ridehailing Route Configuration -->
+                <div class="tool-section" id="ridehailingConfig" style="display: none;">
+                    <div class="tool-title">
+                        <i class="fas fa-route"></i>
+                        Route Configuration
+                    </div>
+                    
+                    <!-- Step-by-step Guide -->
+                    <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 16px; border-left: 4px solid #007bff;">
+                        <div style="font-weight: 600; color: #007bff; margin-bottom: 8px; font-size: 13px;">📋 Quick Guide:</div>
+                        <ol style="margin: 0; padding-left: 20px; font-size: 12px; line-height: 1.8; color: #555;">
+                            <li>Choose route color & confirm</li>
+                            <li>Click map for pickup point</li>
+                            <li>Draw road OR press <kbd style="background: #fff; padding: 2px 6px; border: 1px solid #ddd; border-radius: 3px; font-size: 11px;">ESC</kbd> to skip (auto-route)</li>
+                            <li>Click map for drop-off points</li>
+                            <li>Click "Finish Drop-offs" when done</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Route Name</label>
+                        <input type="text" class="form-control" id="ridehailingName" placeholder="Enter route name">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Route Color</label>
+                        <input type="color" class="color-picker" id="ridehailingColor" value="#007bff">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Progress</label>
+                        <div style="font-size: 12px; color: #666; margin-bottom: 10px;">
+                            Step <span id="currentStep">1</span> of 4: <span id="stepDescription">Choose color</span>
+                        </div>
+                        <div id="stepStatus">
+                            <div>○ Color: <span id="colorStatus">Not selected</span></div>
+                            <div>○ Pickup Point: <span id="pickupStatus">Not selected</span></div>
+                            <div>○ Road Highlight: <span id="roadStatus">Not drawn</span></div>
+                            <div>○ Drop-off Points: <span id="dropoffStatus">0 selected</span></div>
+                        </div>
+                        <button class="save-button" id="confirmColor" style="display: none; background: #28a745; margin-top: 10px;">
+                            <i class="fas fa-check mr-1"></i>Confirm Color
+                        </button>
+                        <button class="save-button" id="autoRoute" style="display: none; background: #28a745; margin-top: 10px;">
+                            <i class="fas fa-route mr-1"></i>Auto Create Route
+                        </button>
+                        <button class="save-button" id="customRoute" style="display: none; background: #fd7e14; margin-top: 10px;">
+                            <i class="fas fa-map-signs mr-1"></i>Custom Route via Points
+                        </button>
+                        <button class="save-button" id="snapToRoadToggle" style="display: none; background: #28a745; margin-top: 10px;">
+                            <i class="fas fa-route mr-1"></i>Road Routing: ON
+                        </button>
+                        <button class="save-button" id="finishRoadDrawing" style="display: none; background: #17a2b8; margin-top: 10px;">
+                            <i class="fas fa-check mr-1"></i>Finish Road Drawing
+                        </button>
+                        <button class="save-button" id="finishDropoffs" style="display: none; background: #28a745; margin-top: 10px;">
+                            <i class="fas fa-check mr-1"></i>Finish Drop-offs
+                        </button>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="ridehailingDescription" rows="2" placeholder="Route description"></textarea>
+                    </div>
+                    <div class="form-group" id="pickupImageSection" style="display: none;">
+                        <label class="form-label">Pickup Point Images (Optional)</label>
+                        <input type="file" class="form-control" id="pickupImages" accept="image/*" multiple>
+                        <small class="text-muted">Add photos of the pickup location (max 3 images)</small>
+                        <div id="pickupImagePreview" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;"></div>
+                    </div>
+                    <div class="form-group" id="dropoffImageSection" style="display: none;">
+                        <label class="form-label">Drop-off Point Images (Optional)</label>
+                        <input type="file" class="form-control" id="dropoffImages" accept="image/*" multiple>
+                        <small class="text-muted">Add photos of the drop-off location (max 3 images)</small>
+                        <div id="dropoffImagePreview" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;"></div>
+                    </div>
+                    <button class="save-button prevent-multiple-clicks" id="saveRidehailing" data-prevent-multiple style="display: none;">
+                        <span class="btn-text">
+                            <i class="fas fa-save mr-1"></i>Save Ridehailing Route
+                        </span>
+                        <span class="btn-loading hidden">
+                            <i class="fas fa-spinner fa-spin mr-1"></i>Saving...
+                        </span>
+                    </button>
+                    <button class="clear-button" id="redoCurrentStep" style="background: #ffc107; color: #212529; margin-bottom: 5px;">
+                        <i class="fas fa-redo mr-1"></i>Redo Current Step
+                    </button>
+                    <button class="clear-button" id="resetRidehailing">
+                        <i class="fas fa-undo mr-1"></i>Reset All Steps
+                    </button>
+                    <button class="clear-button" id="deleteCurrentRoute" style="background: #dc3545; margin-top: 5px;">
+                        <i class="fas fa-trash mr-1"></i>Delete Entire Route
+                    </button>
+                </div>
+                
+
+                
+                <!-- Debug Section -->
+                <div class="tool-section" style="display: none;">
+                    <div class="tool-title">
+                        <i class="fas fa-tools"></i>
+                        System Tools
+                    </div>
+                    <button class="tool-button" id="debugCheck" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); color: white;">
+                        <i class="fas fa-stethoscope"></i>
+                        <span>System Status</span>
+                    </button>
+                    <button class="tool-button" id="fixJsonData" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white;">
+                        <i class="fas fa-magic"></i>
+                        <span>Fix Data</span>
+                    </button>
+                    <button class="tool-button" id="testRoads" style="background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%); color: #212529;">
+                        <i class="fas fa-vial"></i>
+                        <span>Test Roads</span>
+                    </button>
+                    <button class="tool-button" id="createTestRoad" style="background: linear-gradient(135deg, #6f42c1 0%, #6610f2 100%); color: white;">
+                        <i class="fas fa-flask"></i>
+                        <span>Create Test</span>
+                    </button>
+                    <div id="debugResults" style="display: none; margin-top: 16px; padding: 16px; background: rgba(248, 249, 250, 0.8); border-radius: 12px; font-size: 12px; border: 1px solid rgba(222, 226, 230, 0.6);">
+                        <!-- Debug results will appear here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Map Legend -->
+        <div class="map-legend">
+            <div class="legend-title">Legend</div>
+
+            <div class="legend-item">
+                <div class="legend-color" style="background: linear-gradient(90deg, #00FF00, #32CD32);"></div>
+                <span>Available Roads</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: linear-gradient(90deg, #FF6600, #FF4500);"></div>
+                <span>Restricted Roads</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-point" style="background: linear-gradient(135deg, #FF0000, #DC143C);"></div>
+                <span>Important Points</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: linear-gradient(90deg, #007bff, #0056b3);"></div>
+                <span>Tourist Routes</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Leaflet JavaScript -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
+        crossorigin=""></script>
+
+<!-- Leaflet Draw JavaScript -->
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+
+<!-- Leaflet Routing Machine JavaScript -->
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+<!-- Map loader script -->
+<script src="{% static 'js/map_loader.js' %}"></script>
+
+<script>
+    let map;
+    let drawControl;
+    let currentMode = null;
+    let currentDrawing = null;
+    let drawnItems;
+    let markers = [];
+    let polylines = [];
+    let ridehailingData = {
+        step: 1,
+        pickup: null,
+        road: null,
+        dropoffs: [], // Array to store multiple dropoff points
+        color: '#007bff'
+    };
+    let snapToRoadEnabled = true;
+    
+    // Initialize map
+    function initMap() {
+        try {
+            console.log('Starting map initialization...');
+            
+            // Show loading indicator
+            const loadingDiv = document.getElementById('mapLoading');
+            if (loadingDiv) loadingDiv.style.display = 'block';
+            
+            // Create map centered on Cebu City with better zoom controls
+            map = L.map('map', {
+                center: [10.3157, 123.8854],
+                zoom: 12,
+                minZoom: 8,
+                maxZoom: 18,
+                zoomControl: true,
+                scrollWheelZoom: true,
+                doubleClickZoom: true,
+                touchZoom: true
+            });
+            
+            // Try multiple tile servers for reliability
+            let tileLayer;
+            const tileServers = [
+                'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png'
+            ];
+            
+            let currentServerIndex = 0;
+            
+            function createTileLayer(serverIndex = 0) {
+                return L.tileLayer(tileServers[serverIndex], {
+                    maxZoom: 19,
+                    attribution: '© OpenStreetMap contributors',
+                    timeout: 10000
+                });
+            }
+            
+            tileLayer = createTileLayer(0);
+            tileLayer.addTo(map);
+            
+            // Add zoom control in better position
+            map.zoomControl.setPosition('topright');
+            
+            // Ensure map renders properly
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 100);
+            
+            // Hide loading indicator when first tile loads
+            tileLayer.on('load', function() {
+                console.log('Map tiles loaded successfully');
+                const loadingDiv = document.getElementById('mapLoading');
+                if (loadingDiv) loadingDiv.style.display = 'none';
+            });
+            
+            // Hide loading and refresh map
+            setTimeout(() => {
+                const loadingDiv = document.getElementById('mapLoading');
+                if (loadingDiv) loadingDiv.style.display = 'none';
+                map.invalidateSize();
+            }, 2000);
+        
+        // Initialize FeatureGroup to store editable layers
+        drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+        
+        // Initialize draw control (hidden by default)
+        drawControl = new L.Control.Draw({
+            position: 'topright',
+            draw: {
+                polygon: false,
+                circle: false,
+                rectangle: false,
+                circlemarker: false,
+                marker: {
+                    icon: new L.Icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowSize: [41, 41]
+                    })
+                },
+                polyline: {
+                    shapeOptions: {
+                        color: '#FF0000',
+                        weight: 3
+                    }
+                }
+            },
+            edit: {
+                featureGroup: drawnItems
+            }
+        });
+        
+        // Add draw control to map but hide it
+        map.addControl(drawControl);
+        document.querySelector('.leaflet-draw').style.display = 'none';
+        
+        // Listen for drawing events
+        map.on(L.Draw.Event.CREATED, function(event) {
+            var layer = event.layer;
+            currentDrawing = layer;
+            drawnItems.addLayer(layer);
+            
+            if (event.layerType === 'polyline') {
+                showRoadConfig();
+            } else if (event.layerType === 'marker') {
+                showPointConfig();
+            }
+        });
+        
+            // Load existing data after a short delay to ensure map is ready
+            setTimeout(() => {
+                loadExistingData();
+            }, 500);
+            
+        } catch (error) {
+            console.error('Map initialization error:', error);
+            const loadingDiv = document.getElementById('mapLoading');
+            if (loadingDiv) loadingDiv.style.display = 'none';
+            
+            const mapElement = document.getElementById('map');
+            if (mapElement) {
+                mapElement.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f8f9fa; border-radius: 8px; flex-direction: column;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">🗺️</div>
+                        <h3 style="color: #531B24; margin-bottom: 10px;">Map Failed to Load</h3>
+                        <p style="color: #666; text-align: center; margin-bottom: 10px;">Error: ${error.message}</p>
+                        <p style="color: #666; text-align: center; margin-bottom: 20px;">Possible causes:</p>
+                        <ul style="color: #666; text-align: left; margin-bottom: 20px;">
+                            <li>Internet connection issues</li>
+                            <li>Leaflet library not loaded</li>
+                            <li>Browser compatibility</li>
+                        </ul>
+                        <button onclick="location.reload()" style="background: #531B24; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+                            🔄 Refresh Page
+                        </button>
+                    </div>
+                `;
+            }
+        }
+    }
+    
+
+    
+    document.getElementById('addPoint').addEventListener('click', function() {
+        if (!map) {
+            showErrorModal('Map Error', 'Map is not initialized. Please refresh the page.');
+            return;
+        }
+        setDrawingMode('point');
+        
+        // Show point configuration immediately
+        showPointConfig();
+        
+        // Set default color if not set
+        const colorPicker = document.getElementById('pointColor');
+        if (!colorPicker.value || colorPicker.value === '') {
+            colorPicker.value = '#FF0000';
+        }
+        
+        startDrawing('marker');
+        setActiveButton(this);
+        
+        // Show instruction
+        showInstructionOverlay('Add Point', 'Click anywhere on the map to place a point. Choose the point type and color before saving.');
+    });
+    
+    document.getElementById('highlightRoad').addEventListener('click', function() {
+        if (!map) {
+            showErrorModal('Map Error', 'Map is not initialized. Please refresh the page.');
+            return;
+        }
+        setDrawingMode('road');
+        showRoadConfig();
+        setActiveButton(this);
+        startRoadHighlightDrawing();
+    });
+    
+    document.getElementById('addRidehailing').addEventListener('click', function() {
+        if (!map) {
+            showErrorModal('Map Error', 'Map is not initialized. Please refresh the page.');
+            return;
+        }
+        setDrawingMode('ridehailing');
+        resetRidehailingData();
+        showRidehailingConfig();
+        setActiveButton(this);
+        startRidehailingFlow();
+    });
+    
+    document.getElementById('clearDrawing').addEventListener('click', function() {
+        if (currentDrawing) {
+            drawnItems.removeLayer(currentDrawing);
+            currentDrawing = null;
+        }
+        hideAllConfigs();
+        resetToolButtons();
+        stopDrawing();
+    });
+    
+    function startRoadHighlightDrawing() {
+        stopDrawing();
+        showInstructionOverlay('Highlight Road', 'Click points along the road. OSRM will snap to actual roads. Right-click or ESC to finish.');
+        
+        let isDrawing = false;
+        let currentPolyline = null;
+        let currentPoints = [];
+        const roadColor = document.getElementById('roadColor').value || '#00FF00';
+        const roadWeight = parseInt(document.getElementById('roadWidth').value) || 5;
+        
+        const drawingHandler = function(e) {
+            if (!isDrawing) {
+                isDrawing = true;
+                currentPoints = [e.latlng];
+                currentPolyline = L.polyline(currentPoints, {
+                    color: roadColor,
+                    weight: roadWeight
+                }).addTo(drawnItems);
+                currentDrawing = currentPolyline;
+            } else {
+                const lastPoint = currentPoints[currentPoints.length - 1];
+                const url = `https://router.project-osrm.org/route/v1/driving/${lastPoint.lng},${lastPoint.lat};${e.latlng.lng},${e.latlng.lat}?overview=full&geometries=geojson`;
+                
+                fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.routes && data.routes[0] && data.routes[0].geometry) {
+                        const coords = data.routes[0].geometry.coordinates.map(coord => ({lat: coord[1], lng: coord[0]}));
+                        currentPoints = [...currentPoints.slice(0, -1), ...coords];
+                        currentPolyline.setLatLngs(currentPoints);
+                    } else {
+                        currentPoints.push(e.latlng);
+                        currentPolyline.setLatLngs(currentPoints);
+                    }
+                })
+                .catch(() => {
+                    currentPoints.push(e.latlng);
+                    currentPolyline.setLatLngs(currentPoints);
+                });
+            }
+        };
+        
+        const finishDrawing = function() {
+            if (isDrawing && currentPoints.length > 1) {
+                map.off('click', drawingHandler);
+                map.off('contextmenu', finishDrawing);
+                document.removeEventListener('keydown', keyHandler);
+                hideInstructionOverlay();
+                
+                const roadNameField = document.getElementById('roadName');
+                if (roadNameField && !roadNameField.value.trim()) {
+                    roadNameField.value = `Road Highlight ${Date.now().toString().slice(-4)}`;
+                }
+                showRoadConfig();
+            }
+        };
+        
+        const keyHandler = function(e) {
+            if (e.key === 'Escape' && isDrawing && currentPoints.length > 1) {
+                finishDrawing();
+            }
+        };
+        
+        map.on('click', drawingHandler);
+        map.on('contextmenu', finishDrawing);
+        document.addEventListener('keydown', keyHandler);
+    }
+    
+    function startDrawing(type, color = '#FF0000', weight = 3) {
+        stopDrawing();
+        
+        if (type === 'marker') {
+            const markerHandler = function(e) {
+                const pointType = document.getElementById('pointType').value;
+                const selectedColor = document.getElementById('pointColor').value;
+                
+                // Create marker with appropriate icon
+                const marker = L.marker(e.latlng).addTo(drawnItems);
+                updateMarkerForPointType(marker, pointType, selectedColor);
+                
+                currentDrawing = marker;
+                showPointConfig();
+                map.off('click', markerHandler);
+            };
+            
+            map.on('click', markerHandler);
+        }
+    }
+    
+    function stopDrawing() {
+        map.off('click');
+        map.off('dblclick');
+        map.off('contextmenu');
+        map.dragging.enable();
+        hideInstructionOverlay();
+        
+        // Clear custom routing handlers
+        customWaypoints = [];
+        customTempMarkers.forEach(marker => {
+            if (drawnItems.hasLayer(marker)) {
+                drawnItems.removeLayer(marker);
+            }
+        });
+        customTempMarkers = [];
+    }
+    
+
+    
+    function showPointConfig() {
+        hideAllConfigs();
+        document.getElementById('pointConfig').style.display = 'block';
+        
+        // Ensure color picker has a default value
+        const colorPicker = document.getElementById('pointColor');
+        if (!colorPicker.value || colorPicker.value === '') {
+            colorPicker.value = '#FF0000';
+        }
+        
+        // Check if current point type needs color picker
+        const pointType = document.getElementById('pointType').value;
+        const colorGroup = colorPicker.closest('.form-group');
+        const hasIcon = getPointTypeIcon(pointType) !== null;
+        colorGroup.style.display = hasIcon ? 'none' : 'block';
+    }
+    
+    function showRoadConfig() {
+        hideAllConfigs();
+        document.getElementById('roadConfig').style.display = 'block';
+    }
+    
+    function showRidehailingConfig() {
+        hideAllConfigs();
+        document.getElementById('ridehailingConfig').style.display = 'block';
+    }
+    
+    function hideAllConfigs() {
+        document.getElementById('pointConfig').style.display = 'none';
+        document.getElementById('roadConfig').style.display = 'none';
+        document.getElementById('ridehailingConfig').style.display = 'none';
+    }
+    
+    function setDrawingMode(mode) {
+        currentMode = mode;
+    }
+    
+    function setActiveButton(button) {
+        document.querySelectorAll('.tool-button').forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+    }
+    
+    function resetToolButtons() {
+        document.querySelectorAll('.tool-button').forEach(btn => btn.classList.remove('active'));
+    }
+    
+
+    
+    document.getElementById('savePoint').addEventListener('click', function() {
+        if (!currentDrawing) {
+            showCustomModal('Missing Point', 'Please add a point first!');
+            return;
+        }
+        
+        try {
+            const pointName = document.getElementById('pointName').value.trim();
+            if (!pointName) {
+                showCustomModal('Missing Information', 'Please enter a route name!');
+                return;
+            }
+            
+            showLoadingOverlay('Saving point...');
+            
+            // Get coordinates from Leaflet marker
+            let position;
+            if (typeof currentDrawing.getLatLng === 'function') {
+                position = currentDrawing.getLatLng();
+            } else if (currentDrawing._latlng) {
+                position = currentDrawing._latlng;
+            } else if (currentDrawing.options && currentDrawing.options.position) {
+                position = currentDrawing.options.position;
+            } else {
+                console.error('Cannot get position from marker:', currentDrawing);
+                alert('Error: Cannot get marker position');
+                return;
+            }
+            
+            if (!position || typeof position.lat !== 'number' || typeof position.lng !== 'number') {
+                console.error('Invalid position:', position);
+                showCustomModal('Position Error', 'Error: Invalid marker position', 'error');
+                return;
+            }
+            
+            const selectedColor = document.getElementById('pointColor').value;
+            const pointData = {
+                name: pointName,
+                point_type: document.getElementById('pointType').value,
+                icon_color: selectedColor,
+                description: document.getElementById('pointDescription').value,
+                latitude: position.lat,
+                longitude: position.lng
+            };
+            
+            // Update marker icon to show selected color immediately
+            updateMarkerIcon(currentDrawing, selectedColor);
+            
+            // Handle multiple image uploads if present (limit to 5)
+            const imageFiles = document.getElementById('pointImage').files;
+            if (imageFiles.length > 0) {
+                console.log(`Preparing to upload ${imageFiles.length} image(s)`);
+                
+                const formData = new FormData();
+                const maxImages = Math.min(imageFiles.length, 5);
+                
+                // Add images first
+                for (let i = 0; i < maxImages; i++) {
+                    console.log(`Adding image ${i + 1}: ${imageFiles[i].name} (${imageFiles[i].size} bytes)`);
+                    formData.append('images', imageFiles[i]);
+                }
+                
+                // Add point data
+                Object.keys(pointData).forEach(key => {
+                    console.log(`Adding form field ${key}: ${pointData[key]}`);
+                    formData.append(key, pointData[key]);
+                });
+                
+                if (imageFiles.length > 5) {
+                    showSuccessMessage('Only first 5 images will be uploaded');
+                }
+                
+                console.log('Sending FormData with images to server...');
+                savePointWithImage(formData, function() {
+                    hideLoadingOverlay();
+                });
+                return;
+            }
+            
+            console.log('Saving point without images:', pointData);
+            saveToDatabase('point', pointData, function() {
+                hideLoadingOverlay();
+            });
+            
+        } catch (error) {
+            console.error('Error preparing point data:', error);
+            showCustomModal('Error', 'Error preparing point data: ' + error.message, 'error');
+            hideLoadingOverlay();
+        }
+    });
+    
+    document.getElementById('saveRoad').addEventListener('click', function() {
+        if (!currentDrawing) {
+            showCustomModal('Missing Road', 'Please draw a road highlight first!');
+            return;
+        }
+        
+        try {
+            const roadName = document.getElementById('roadName').value.trim();
+            if (!roadName) {
+                showCustomModal('Missing Information', 'Please enter a highlight name!');
+                return;
+            }
+            
+            // Show loading state
+            const saveButton = document.getElementById('saveRoad');
+            const originalText = saveButton.innerHTML;
+            saveButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Saving...';
+            saveButton.disabled = true;
+            showLoadingOverlay('Saving road highlight...');
+            
+            const coordinates = currentDrawing.getLatLngs();
+            if (!coordinates || coordinates.length === 0) {
+                showCustomModal('Invalid Road', 'Road highlight has no coordinates!', 'error');
+                return;
+            }
+            
+            const roadData = {
+                name: roadName,
+                highlight_type: document.getElementById('roadType').value,
+                stroke_color: document.getElementById('roadColor').value,
+                stroke_width: parseInt(document.getElementById('roadWidth').value),
+                description: document.getElementById('roadDescription').value,
+                road_coordinates: coordinates.map(point => ({
+                    lat: point.lat,
+                    lng: point.lng
+                }))
+            };
+            
+            console.log('Saving road highlight:', roadData);
+            saveToDatabase('road', roadData, function() {
+                // Reset button state on completion
+                saveButton.innerHTML = originalText;
+                saveButton.disabled = false;
+                hideLoadingOverlay();
+            });
+            
+        } catch (error) {
+            console.error('Error preparing road data:', error);
+            showCustomModal('Error', 'Error preparing road data: ' + error.message, 'error');
+            // Reset button state on error
+            const saveButton = document.getElementById('saveRoad');
+            saveButton.innerHTML = '<i class="fas fa-save mr-1"></i>Save Highlight';
+            saveButton.disabled = false;
+            hideLoadingOverlay();
+        }
+    });
+    
+    // Update stroke width display
+    document.getElementById('roadWidth').addEventListener('input', function() {
+        document.getElementById('widthValue').textContent = this.value;
+        if (currentDrawing && currentDrawing.setStyle) {
+            currentDrawing.setStyle({ weight: parseInt(this.value) });
+        }
+    });
+    
+
+    
+    document.getElementById('roadColor').addEventListener('change', function() {
+        if (currentDrawing && currentDrawing.setStyle) {
+            currentDrawing.setStyle({ color: this.value });
+        }
+    });
+    
+    // Point color change handler
+    document.getElementById('pointColor').addEventListener('change', function() {
+        if (currentDrawing && typeof currentDrawing.setIcon === 'function') {
+            updateMarkerIcon(currentDrawing, this.value);
+        }
+    });
+    
+    // Point type change handler
+    document.getElementById('pointType').addEventListener('change', function() {
+        const pointType = this.value;
+        const colorPicker = document.getElementById('pointColor');
+        const colorGroup = colorPicker.closest('.form-group');
+        
+        // Check if point type has emoji icon
+        const hasIcon = getPointTypeIcon(pointType) !== null;
+        
+        if (hasIcon) {
+            // Hide color picker for icon types
+            colorGroup.style.display = 'none';
+        } else {
+            // Show color picker for regular types
+            colorGroup.style.display = 'block';
+        }
+        
+        // Update marker if exists
+        if (currentDrawing && typeof currentDrawing.setIcon === 'function') {
+            updateMarkerForPointType(currentDrawing, pointType, colorPicker.value);
+        }
+    });
+    
+    // Save point with image function
+    function savePointWithImage(formData, callback) {
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        fetch('/routemanagement/save_point/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+            },
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json(); // Use response.json() instead of response.text()
+        })
+        .then(result => {
+            console.log('Point save response:', result);
+            
+            if (callback) callback();
+            if (result.success) {
+                const message = result.image_uploaded ? 
+                    'Point and image saved successfully!' : 
+                    'Point saved successfully!';
+                showSuccessMessage(message);
+                clearCurrentDrawing();
+                loadExistingData();
+            } else {
+                showCustomModal('Save Error', `Error saving point: ${result.error}`, 'error');
+            }
+        })
+        .catch(error => {
+            if (callback) callback();
+            console.error('Error saving point:', error);
+            
+            // More specific error messages
+            let errorMessage = 'Error saving point';
+            if (error.message.includes('Failed to fetch')) {
+                errorMessage = 'Network error - please check your connection';
+            } else if (error.message.includes('JSON')) {
+                errorMessage = 'Server response error - please try again';
+            } else {
+                errorMessage = `Error: ${error.message}`;
+            }
+            
+            showCustomModal('Error', errorMessage, 'error');
+        });
+    }
+    
+    // Save to database function
+    function saveToDatabase(type, data, callback) {
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        fetch(`/routemanagement/save_${type}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken,
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json(); // Use response.json() instead of response.text()
+        })
+        .then(result => {
+            console.log(`${type} save response:`, result);
+            
+            if (callback) callback();
+            if (result.success) {
+                showSuccessMessage(`${type.charAt(0).toUpperCase() + type.slice(1)} saved successfully!`);
+                clearCurrentDrawing();
+                loadExistingData();
+            } else {
+                showCustomModal('Save Error', `Error saving ${type}: ${result.error}`, 'error');
+            }
+        })
+        .catch(error => {
+            if (callback) callback();
+            console.error(`Error saving ${type}:`, error);
+            
+            // More specific error messages
+            let errorMessage = `Error saving ${type}`;
+            if (error.message.includes('Failed to fetch')) {
+                errorMessage = 'Network error - please check your connection';
+            } else if (error.message.includes('JSON')) {
+                errorMessage = 'Server response error - please try again';
+            } else {
+                errorMessage = `Error: ${error.message}`;
+            }
+            
+            showCustomModal('Error', errorMessage, 'error');
+        });
+    }
+    
+    function clearCurrentDrawing() {
+        if (currentDrawing) {
+            drawnItems.removeLayer(currentDrawing);
+            currentDrawing = null;
+        }
+        hideAllConfigs();
+        resetToolButtons();
+        stopDrawing();
+        
+        // Clear form fields
+        document.querySelectorAll('.form-control').forEach(input => {
+            if (input.type !== 'color') {
+                input.value = '';
+            }
+        });
+    }
+    
+    // Load existing data
+    function loadExistingData() {
+        console.log('Loading existing map data...');
+        fetchExistingItems();
+    }
+    
+    // fetchExistingItems is now loaded from external JS file
+    
+    function clearMapItems() {
+        console.log(`Clearing ${markers.length} markers and ${polylines.length} polylines`);
+        
+        // Clear existing markers
+        markers.forEach(marker => {
+            if (map.hasLayer(marker)) {
+                map.removeLayer(marker);
+            }
+        });
+        markers = [];
+        
+        // Clear existing polylines
+        polylines.forEach(polyline => {
+            if (map.hasLayer(polyline)) {
+                map.removeLayer(polyline);
+            }
+        });
+        polylines = [];
+        
+        console.log('Map items cleared');
+    }
+    
+
+    
+    function displayExistingPoints(points) {
+        points.forEach(point => {
+            try {
+                // Validate coordinates
+                const lat = parseFloat(point.latitude);
+                const lng = parseFloat(point.longitude);
+                
+                if (isNaN(lat) || isNaN(lng)) {
+                    console.warn('Invalid coordinates for point:', point.name);
+                    return;
+                }
+                
+                // Create marker with appropriate icon
+                const marker = L.marker([lat, lng]).addTo(map);
+                updateMarkerForPointType(marker, point.point_type, point.icon_color || '#FF0000');
+                
+                // Enhanced popup for tourist spots
+                let popupContent = createTouristPopup(point);
+                marker.bindPopup(popupContent, { 
+                    maxWidth: 320, 
+                    maxHeight: 500,
+                    className: 'custom-popup'
+                });
+                markers.push(marker);
+            } catch (error) {
+                console.error(`Error displaying point ${point.name}:`, error);
+            }
+        });
+    }
+    
+    function displayExistingRoads(roads) {
+        console.log('displayExistingRoads called with:', roads);
+        
+        if (!roads || roads.length === 0) {
+            console.log('No roads to display');
+            showSuccessMessage('No roads found in database');
+            return;
+        }
+        
+        let successCount = 0;
+        let errorCount = 0;
+        
+        roads.forEach((road, index) => {
+            console.log(`Processing road ${index + 1}/${roads.length}:`, {
+                id: road.id,
+                name: road.name,
+                color: road.stroke_color,
+                coordType: typeof road.road_coordinates,
+                coordLength: Array.isArray(road.road_coordinates) ? road.road_coordinates.length : 'N/A'
+            });
+            
+            try {
+                if (!road.road_coordinates) {
+                    console.warn(`Road ${road.name || 'unnamed'} has no coordinates`);
+                    errorCount++;
+                    return;
+                }
+                
+                let coords = road.road_coordinates;
+                
+                // Parse if string
+                if (typeof coords === 'string') {
+                    try {
+                        coords = JSON.parse(coords);
+                        console.log(`Parsed string coordinates for ${road.name}`);
+                    } catch (e) {
+                        console.error(`Failed to parse coordinates for ${road.name}:`, e);
+                        errorCount++;
+                        return;
+                    }
+                }
+                
+                if (!Array.isArray(coords) || coords.length < 2) {
+                    console.warn(`Invalid coordinates for ${road.name}:`, coords);
+                    errorCount++;
+                    return;
+                }
+                
+                // Convert to [lat, lng] format for Leaflet
+                const latLngs = coords.map(coord => {
+                    if (Array.isArray(coord) && coord.length >= 2) {
+                        return [parseFloat(coord[0]), parseFloat(coord[1])];
+                    }
+                    if (coord && typeof coord === 'object' && coord.lat && coord.lng) {
+                        return [parseFloat(coord.lat), parseFloat(coord.lng)];
+                    }
+                    console.warn(`Invalid coordinate format:`, coord);
+                    return null;
+                }).filter(c => c && !isNaN(c[0]) && !isNaN(c[1]));
+                
+                if (latLngs.length < 2) {
+                    console.warn(`Not enough valid coordinates for ${road.name}: ${latLngs.length}`);
+                    errorCount++;
+                    return;
+                }
+                
+                console.log(`Creating road ${road.name} with ${latLngs.length} valid points`);
+                
+                const polyline = L.polyline(latLngs, {
+                    color: road.stroke_color || '#007bff',
+                    weight: road.stroke_width || 4,
+                    opacity: road.stroke_opacity || 0.8
+                }).addTo(map);
+                
+                // Enhanced popup with delete option
+                const popupContent = `
+                    <div style="min-width: 200px;">
+                        <strong>${road.name || 'Unnamed Road'}</strong><br>
+                        <span style="color: ${road.stroke_color || '#007bff'};">■</span> Color: ${road.stroke_color || '#007bff'}<br>
+                        Type: ${road.highlight_type || 'Unknown'}<br>
+                        Points: ${latLngs.length}<br>
+                        <button onclick="deleteMapRoad(${road.id})" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-top: 5px;">
+                            🗑️ Delete Road
+                        </button>
+                    </div>
+                `;
+                
+                polyline.bindPopup(popupContent);
+                polylines.push(polyline);
+                successCount++;
+                
+                console.log(`✓ Road ${road.name} added to map successfully`);
+                
+            } catch (error) {
+                console.error(`✗ Error adding road ${road.name}:`, error);
+                errorCount++;
+            }
+        });
+        
+        console.log(`Roads processing complete: ${successCount} successful, ${errorCount} errors`);
+        
+        if (successCount > 0) {
+            showSuccessMessage(`Loaded ${successCount} road${successCount > 1 ? 's' : ''} successfully${errorCount > 0 ? ` (${errorCount} failed)` : ''}`);
+        } else if (errorCount > 0) {
+            showSuccessMessage(`Failed to load ${errorCount} road${errorCount > 1 ? 's' : ''} - check console for details`);
+        }
+    }
+    
+
+    
+    function createTouristPopup(point) {
+        const typeEmojis = {
+            'tourist_spot': '🏛️',
+            'restaurant': '🍽️',
+            'hotel': '🏨',
+            'shopping': '🛍️',
+            'beach': '🏖️',
+            'museum': '🏛️',
+            'park': '🌳',
+            'church': '⛪',
+            'viewpoint': '🌄',
+            'pickup': '🐴',
+            'dropoff': '🏁'
+        };
+        
+        const emoji = typeEmojis[point.point_type] || '📍';
+        
+        // Clean up name and description for ridehailing points
+        let cleanName = point.name;
+        let cleanDescription = point.description || '';
+        let typeName = point.point_type.replace('_', ' ');
+        
+        // Handle ridehailing route points
+        if (point.description && point.description.includes('Route: ridehailing_')) {
+            const routeMatch = cleanName.match(/^(.+?) - (Pickup|Drop-off|Dropoff)/i);
+            if (routeMatch) {
+                cleanName = routeMatch[1];
+                typeName = routeMatch[2] === 'Drop-off' || routeMatch[2] === 'Dropoff' ? 'Drop-off Point' : 'Pickup Point';
+                cleanDescription = `Part of ${cleanName} ridehailing route`;
+            }
+        }
+        
+        let popupContent = `
+            <div style="width: 280px; font-family: 'Segoe UI', sans-serif; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.12);">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; text-align: center;">
+                    <div style="font-size: 36px; margin-bottom: 12px;">${emoji}</div>
+                    <h3 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 600;">${cleanName}</h3>
+                    <span style="background: rgba(255,255,255,0.25); padding: 6px 16px; border-radius: 20px; font-size: 13px; text-transform: capitalize; font-weight: 500;">${typeName}</span>
+                </div>
+                
+                <div style="padding: 24px;">
+        `;
+        
+        if (cleanDescription && !cleanDescription.includes('Route: ridehailing_')) {
+            popupContent += `
+                <div style="margin-bottom: 20px; padding: 16px; background: #f8f9ff; border-radius: 12px; border-left: 4px solid #667eea;">
+                    <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #4a5568;">${cleanDescription}</p>
+                </div>
+            `;
+        }
+        
+        if (point.image_urls && point.image_urls.length > 0) {
+            popupContent += `
+                <div style="margin-bottom: 20px; text-align: center;">
+                    <button onclick="openImageGallery(['${point.image_urls.join("','")}''], '${cleanName.replace(/'/g, "\\'")}')"
+                            style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; border: none; padding: 14px 28px; border-radius: 30px; cursor: pointer; font-size: 14px; font-weight: 600; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 15px rgba(79,172,254,0.4);" 
+                            onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 25px rgba(79,172,254,0.5)'" 
+                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(79,172,254,0.4)'">
+                        📷 View ${point.image_urls.length} Photo${point.image_urls.length > 1 ? 's' : ''}
+                    </button>
+                </div>
+            `;
+        } else if (point.image_url && point.image_url.trim()) {
+            popupContent += `
+                <div style="margin-bottom: 20px; text-align: center;">
+                    <button onclick="openImageGallery(['${point.image_url}'], '${cleanName.replace(/'/g, '\\\'')}')" 
+                            style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; border: none; padding: 14px 28px; border-radius: 30px; cursor: pointer; font-size: 14px; font-weight: 600; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 15px rgba(79,172,254,0.4);" 
+                            onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 25px rgba(79,172,254,0.5)'" 
+                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(79,172,254,0.4)'">
+                        📷 View Photo
+                    </button>
+                </div>
+            `;
+        }
+        
+        popupContent += `
+                    <div style="text-align: center;">
+                        ${point.point_type === 'pickup' ? `
+                        <button onclick='addAnotherDropoff(${JSON.stringify(point)})' 
+                                style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; padding: 12px 24px; border-radius: 25px; cursor: pointer; font-size: 13px; font-weight: 600; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 15px rgba(40,167,69,0.4); margin-bottom: 10px;" 
+                                onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 25px rgba(40,167,69,0.5)'" 
+                                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(40,167,69,0.4)'">
+                            ➕ Add Drop-off
+                        </button><br>
+                        ` : ''}
+                        <button onclick="deleteMapPoint(${point.id})" 
+                                style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%); color: white; border: none; padding: 12px 24px; border-radius: 25px; cursor: pointer; font-size: 13px; font-weight: 600; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 15px rgba(255,107,107,0.4);" 
+                                onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 25px rgba(255,107,107,0.5)'" 
+                                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(255,107,107,0.4)'">
+                            🗑️ Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        return popupContent;
+    }
+    
+    function getColorName(hexColor) {
+        if (!hexColor || hexColor === '') return 'red';
+        
+        const hex = hexColor.toLowerCase();
+        
+        // Direct color mapping
+        const colorMap = {
+            '#ff0000': 'red', '#dc3545': 'red', '#f00': 'red',
+            '#00ff00': 'green', '#28a745': 'green', '#0f0': 'green', '#008000': 'green',
+            '#0000ff': 'blue', '#007bff': 'blue', '#00f': 'blue',
+            '#ffff00': 'yellow', '#ffc107': 'yellow', '#ff0': 'yellow',
+            '#ffa500': 'orange', '#fd7e14': 'orange', '#ff6600': 'orange',
+            '#800080': 'violet', '#6f42c1': 'violet', '#8b00ff': 'violet',
+            '#808080': 'grey', '#6c757d': 'grey', '#999999': 'grey',
+            '#000000': 'black', '#343a40': 'black'
+        };
+        
+        if (colorMap[hex]) return colorMap[hex];
+        
+        // Simple RGB analysis
+        try {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            
+            if (r > g && r > b) return 'red';
+            if (g > r && g > b) return 'green';
+            if (b > r && b > g) return 'blue';
+            if (r > 200 && g > 200) return 'yellow';
+            if (r > 150 && g > 100 && b < 100) return 'orange';
+            if (r < 100 && g < 100 && b < 100) return 'black';
+            return 'grey';
+        } catch (e) {
+            return 'red';
+        }
+    }
+    
+    // Debug functionality
+    document.getElementById('debugCheck').addEventListener('click', function() {
+        const resultsDiv = document.getElementById('debugResults');
+        resultsDiv.style.display = 'block';
+        resultsDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking system status...';
+        
+        fetch('/routemanagement/debug/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const info = data.debug_info;
+                let statusHtml = '<strong>System Status:</strong><br><br>';
+                
+                // User authentication
+                statusHtml += `<span style="color: ${data.authenticated ? 'green' : 'red'}">
+                    <i class="fas fa-${data.authenticated ? 'check' : 'times'}"></i> User Authentication: ${data.authenticated ? 'OK' : 'FAILED'}
+                </span><br>`;
+                
+                if (data.user_id && data.user_id !== 'None') {
+                    statusHtml += `User ID: ${data.user_id}<br><br>`;
+                }
+                
+                statusHtml += '<br><strong style="color: green;">✅ System working!</strong><br>';
+                statusHtml += 'Authentication and JSON endpoints are functional.<br>';
+                
+                resultsDiv.innerHTML = statusHtml;
+            } else {
+                resultsDiv.innerHTML = `<span style="color: red;">Debug Error: ${data.error}</span>`;
+            }
+        })
+        .catch(error => {
+            resultsDiv.innerHTML = `<span style="color: red;">Network Error: ${error.message}</span>`;
+        });
+    });
+    
+    // Create test road functionality
+    document.getElementById('createTestRoad').addEventListener('click', function() {
+        const resultsDiv = document.getElementById('debugResults');
+        resultsDiv.style.display = 'block';
+        resultsDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating test road...';
+        
+        // Create a simple test road
+        const testRoadData = {
+            name: 'Test Road ' + Date.now(),
+            description: 'Auto-generated test road',
+            highlight_type: 'available',
+            stroke_color: '#FF6600',
+            stroke_width: 4,
+            road_coordinates: [
+                { lat: 10.3157, lng: 123.8854 },  // Cebu City center
+                { lat: 10.3200, lng: 123.8900 },  // Slightly northeast
+                { lat: 10.3250, lng: 123.8950 }   // Further northeast
+            ]
+        };
+        
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        fetch('/routemanagement/save_road/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken,
+            },
+            body: JSON.stringify(testRoadData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                resultsDiv.innerHTML = `
+                    <span style="color: green;">
+                        <i class="fas fa-check"></i> Test road created successfully!
+                    </span><br><br>
+                    <strong>Road Details:</strong><br>
+                    Name: ${testRoadData.name}<br>
+                    Color: ${testRoadData.stroke_color}<br>
+                    Coordinates: ${testRoadData.road_coordinates.length} points<br><br>
+                    <button onclick="loadExistingData()" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                        Refresh Map
+                    </button>
+                `;
+            } else {
+                resultsDiv.innerHTML = `<span style="color: red;">Error creating test road: ${data.error}</span>`;
+            }
+        })
+        .catch(error => {
+            resultsDiv.innerHTML = `<span style="color: red;">Network Error: ${error.message}</span>`;
+        });
+    });
+    
+    // Test roads functionality
+    document.getElementById('testRoads').addEventListener('click', function() {
+        const resultsDiv = document.getElementById('debugResults');
+        resultsDiv.style.display = 'block';
+        resultsDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing roads...';
+        
+        fetch('/routemanagement/test_roads/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                let statusHtml = '<strong>Roads Test Results:</strong><br><br>';
+                statusHtml += `<span style="color: green;">
+                    <i class="fas fa-check"></i> Total Roads: ${data.total_roads}
+                </span><br><br>`;
+                
+                if (data.roads && data.roads.length > 0) {
+                    statusHtml += '<strong>Road Details:</strong><br>';
+                    data.roads.forEach((road, index) => {
+                        statusHtml += `${index + 1}. ${road.name || 'Unnamed'} (ID: ${road.id})<br>`;
+                        statusHtml += `   Color: ${road.color || 'None'}<br>`;
+                        statusHtml += `   Coordinates: ${road.coord_count} points (${road.coord_type})<br>`;
+                        if (road.coord_sample) {
+                            statusHtml += `   Sample: ${JSON.stringify(road.coord_sample)}<br>`;
+                        }
+                        statusHtml += '<br>';
+                    });
+                } else {
+                    statusHtml += '<strong style="color: orange;">⚠️ No roads found in database</strong><br>';
+                }
+                
+                resultsDiv.innerHTML = statusHtml;
+            } else {
+                resultsDiv.innerHTML = `<span style="color: red;">Test Error: ${data.error}</span>`;
+            }
+        })
+        .catch(error => {
+            resultsDiv.innerHTML = `<span style="color: red;">Network Error: ${error.message}</span>`;
+        });
+    });
+    
+    // Fix JSON data functionality
+    document.getElementById('fixJsonData').addEventListener('click', function() {
+        const resultsDiv = document.getElementById('debugResults');
+        resultsDiv.style.display = 'block';
+        resultsDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fixing JSON data...';
+        
+        fetch('/routemanagement/fix_json_data/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                let statusHtml = '<strong>JSON Data Fix Results:</strong><br><br>';
+                statusHtml += `<span style="color: green;">
+                    <i class="fas fa-check"></i> ${data.message}
+                </span><br>`;
+                statusHtml += `<strong>Fixed Count:</strong> ${data.fixed_count}<br><br>`;
+                
+                if (data.fixed_count > 0) {
+                    statusHtml += '<strong style="color: green;">✅ JSON data has been cleaned up!</strong><br>';
+                    statusHtml += 'The map should now load without JSON parsing errors.<br>';
+                    statusHtml += '<button onclick="location.reload()" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-top: 10px;">Refresh Page</button>';
+                } else {
+                    statusHtml += '<strong style="color: blue;">ℹ️ No malformed JSON data found.</strong><br>';
+                    statusHtml += 'All data appears to be properly formatted.<br>';
+                }
+                
+                resultsDiv.innerHTML = statusHtml;
+            } else {
+                resultsDiv.innerHTML = `<span style="color: red;">Fix Error: ${data.error}</span>`;
+            }
+        })
+        .catch(error => {
+            resultsDiv.innerHTML = `<span style="color: red;">Network Error: ${error.message}</span>`;
+        });
+    });
+    
+    // Ridehailing route functions
+    function resetRidehailingData() {
+        ridehailingData = {
+            step: 0,
+            pickup: null,
+            road: null,
+            dropoff: null,
+            color: null
+        };
+        // Reset color picker
+        document.getElementById('ridehailingColor').disabled = false;
+        document.getElementById('ridehailingColor').value = '#007bff';
+        document.getElementById('confirmColor').style.display = 'none';
+        updateRidehailingStatus();
+    }
+    
+    function startRidehailingFlow() {
+        ridehailingData.step = 0;
+        updateRidehailingStatus();
+        
+        showInstructionOverlay('Step 1 of 4: Choose Route Color', 'Select a color for this route, then click "Confirm Color" button below.');
+        
+        document.getElementById('ridehailingColor').disabled = false;
+        document.getElementById('confirmColor').style.display = 'block';
+    }
+    
+    function startPickupSelection() {
+        const pickupHandler = function(e) {
+            // Clear any existing pickup marker
+            if (ridehailingData.pickup) {
+                drawnItems.removeLayer(ridehailingData.pickup.marker);
+            }
+            
+            // Use the locked color (don't read from picker)
+            
+            const marker = L.marker(e.latlng, {
+                icon: new L.Icon({
+                    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${getColorName(ridehailingData.color)}.png`,
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                })
+            }).addTo(drawnItems);
+            
+            marker.bindPopup(`
+                <div>
+                    <strong>🐴 Pickup Point</strong><br>
+                    <button onclick="addAnotherDropoff()" style="background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-top: 5px; width: 100%;">
+                        ➕ Add Drop-off Point
+                    </button>
+                    <button onclick="deleteRidehailingRoute()" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-top: 5px; width: 100%;">
+                        🗑️ Delete Route
+                    </button>
+                </div>
+            `);
+            ridehailingData.pickup = { marker: marker, latlng: e.latlng };
+            ridehailingData.step = 2;
+            updateRidehailingStatus();
+            
+            map.off('click', pickupHandler);
+            hideInstructionOverlay();
+            showInstructionOverlay('Step 3 of 4: Draw Road Route', '<strong>Option A:</strong> Click points on map to draw road<br><strong>Option B:</strong> Press <kbd style="background: #fff; padding: 2px 8px; border: 1px solid #ddd; border-radius: 3px;">ESC</kbd> to skip & auto-route to drop-offs<br><br>💡 Right-click or ESC again to finish drawing');
+            startRoadDrawing();
+        };
+        
+        map.on('click', pickupHandler);
+    }
+    
+    function startRoadDrawing() {
+        // Clear any existing road
+        if (ridehailingData.road) {
+            drawnItems.removeLayer(ridehailingData.road.polyline);
+            ridehailingData.road = null;
+        }
+        
+        // Stop any existing drawing handlers first
+        stopDrawing();
+        
+        let isDrawing = false;
+        let currentPolyline = null;
+        let currentPoints = [];
+        
+        // Start from pickup point
+        if (ridehailingData.pickup) {
+            currentPoints = [ridehailingData.pickup.latlng];
+        }
+        
+        document.getElementById('finishRoadDrawing').style.display = 'block';
+        document.getElementById('autoRoute').style.display = 'block';
+        document.getElementById('customRoute').style.display = 'block';
+        document.getElementById('snapToRoadToggle').style.display = 'block';
+        
+        const addPointToRoute = function(latlng) {
+            console.log('Adding point to route:', latlng);
+            if (!isDrawing) {
+                isDrawing = true;
+                if (currentPoints.length === 0) {
+                    currentPoints = [latlng];
+                } else {
+                    currentPoints.push(latlng);
+                }
+                currentPolyline = L.polyline(currentPoints, {
+                    color: ridehailingData.color,
+                    weight: 5
+                }).addTo(drawnItems);
+            } else {
+                currentPoints.push(latlng);
+                currentPolyline.setLatLngs(currentPoints);
+            }
+        };
+        
+        const drawingHandler = function(e) {
+            if (snapToRoadEnabled) {
+                // Use OSRM routing for road-centered accuracy
+                if (currentPoints.length === 0) {
+                    // First point
+                    addPointToRoute(e.latlng);
+                } else {
+                    // Route from last point to new point
+                    const lastPoint = currentPoints[currentPoints.length - 1];
+                    const url = `https://router.project-osrm.org/route/v1/driving/${lastPoint.lng},${lastPoint.lat};${e.latlng.lng},${e.latlng.lat}?overview=full&geometries=geojson`;
+                    
+                    fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.routes && data.routes[0] && data.routes[0].geometry) {
+                            const coords = data.routes[0].geometry.coordinates.map(coord => ({lat: coord[1], lng: coord[0]}));
+                            // Replace current points with routed path
+                            currentPoints = [...currentPoints.slice(0, -1), ...coords];
+                            currentPolyline.setLatLngs(currentPoints);
+                        } else {
+                            addPointToRoute(e.latlng);
+                        }
+                    })
+                    .catch(() => addPointToRoute(e.latlng));
+                }
+            } else {
+                addPointToRoute(e.latlng);
+            }
+        };
+        
+        const finishRoadDrawing = function() {
+            if (isDrawing && currentPoints.length > 1) {
+                map.off('click', drawingHandler);
+                map.off('contextmenu', finishRoadDrawing);
+                document.removeEventListener('keydown', keyHandler);
+                document.getElementById('finishRoadDrawing').style.display = 'none';
+                
+                ridehailingData.road = { polyline: currentPolyline, coordinates: currentPoints };
+                ridehailingData.step = 3;
+                updateRidehailingStatus();
+                
+                document.getElementById('dropoffImageSection').style.display = 'block';
+                
+                hideInstructionOverlay();
+                showInstructionOverlay('Step 4 of 4: Add Drop-off Points', 'Click map to add drop-off points (you can add multiple). Click "Finish Drop-offs" button when done.');
+                startMultipleDropoffSelection();
+            }
+        };
+        
+        const keyHandler = function(e) {
+            if (e.key === 'Escape') {
+                if (isDrawing && currentPoints.length > 1) {
+                    finishRoadDrawing();
+                } else {
+                    // Skip road drawing and go directly to dropoffs
+                    map.off('click', drawingHandler);
+                    map.off('contextmenu', finishRoadDrawing);
+                    document.removeEventListener('keydown', keyHandler);
+                    document.getElementById('finishRoadDrawing').style.display = 'none';
+                    document.getElementById('autoRoute').style.display = 'none';
+                    document.getElementById('customRoute').style.display = 'none';
+                    document.getElementById('snapToRoadToggle').style.display = 'none';
+                    
+                    ridehailingData.step = 3;
+                    updateRidehailingStatus();
+                    
+                    hideInstructionOverlay();
+                    showInstructionOverlay('Step 4 of 4: Add Drop-off Points (Road Skipped)', '✅ Road will be auto-routed from pickup to drop-offs.<br><br>Click map to add drop-off points. Click "Finish Drop-offs" when done.');
+                    startMultipleDropoffSelection();
+                }
+            }
+        };
+        
+        // Button click handlers
+        document.getElementById('finishRoadDrawing').onclick = finishRoadDrawing;
+        document.getElementById('snapToRoadToggle').onclick = function() {
+            snapToRoadEnabled = !snapToRoadEnabled;
+            this.innerHTML = snapToRoadEnabled ? 
+                '<i class="fas fa-route mr-1"></i>Road Routing: ON' : 
+                '<i class="fas fa-mouse-pointer mr-1"></i>Direct Drawing: ON';
+            this.style.background = snapToRoadEnabled ? '#28a745' : '#6c757d';
+            
+            const message = snapToRoadEnabled ? 
+                'Road Routing ON: Auto-routes between clicks' : 
+                'Direct Drawing ON: Straight lines between clicks';
+            showSuccessMessage(message);
+        };
+        document.getElementById('autoRoute').onclick = function() {
+            if (ridehailingData.pickup) {
+                showInstructionOverlay('Auto Route Mode', 'Click destination to see route options.');
+                createAutoRouteWithOptions(ridehailingData.pickup.latlng);
+            }
+        };
+        document.getElementById('customRoute').onclick = function() {
+            if (ridehailingData.pickup) {
+                showInstructionOverlay('Custom Route Mode', 'Click waypoints to force route through specific roads, then click final destination.');
+                startCustomRouting(ridehailingData.pickup.latlng);
+            }
+        };
+        
+        // Ensure map is ready for drawing
+        setTimeout(() => {
+            console.log('Setting up road drawing handlers');
+            map.on('click', drawingHandler);
+            map.on('contextmenu', finishRoadDrawing);
+            document.addEventListener('keydown', keyHandler);
+        }, 100);
+    }
+    
+    function startMultipleDropoffSelection() {
+        document.getElementById('finishDropoffs').style.display = 'block';
+        
+        const dropoffHandler = function(e) {
+            if (!ridehailingData.dropoffs) ridehailingData.dropoffs = [];
+            const dropoffNumber = ridehailingData.dropoffs.length + 1;
+            
+            // Prompt for dropoff name
+            showCustomPrompt('Drop-off Name', `Enter name for Drop-off ${dropoffNumber}:`, `Drop-off ${dropoffNumber}`, function(dropoffName) {
+                if (!dropoffName) return;
+                createDropoffMarker(e, dropoffName);
+            });
+        };
+        
+        function createDropoffMarker(e, dropoffName) {
+            const marker = L.marker(e.latlng, {
+                icon: new L.Icon({
+                    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${getColorName(ridehailingData.color)}.png`,
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+                })
+            }).addTo(drawnItems);
+            
+            marker.bindPopup(`
+                <div>
+                    <strong>🏁 ${dropoffName}</strong><br>
+                    <button onclick="removeDropoff(${ridehailingData.dropoffs.length})" style="background: #dc3545; color: white; border: none; padding: 3px 8px; border-radius: 3px; cursor: pointer; margin-top: 3px; font-size: 11px;">
+                        Remove This Drop-off
+                    </button>
+                </div>
+            `);
+            
+            // Connect to road with snapping
+            connectDropoffToRoad(e.latlng);
+            
+            ridehailingData.dropoffs.push({ marker: marker, latlng: e.latlng, name: dropoffName });
+            updateRidehailingStatus();
+            
+            showSuccessMessage(`${dropoffName} added. Click map for more or "Finish Drop-offs" to complete.`);
+        }
+        
+        map.on('click', dropoffHandler);
+        
+        // Store handler for cleanup
+        ridehailingData.dropoffHandler = dropoffHandler;
+    }
+    
+    function startDropoffSelection() {
+        const dropoffHandler = function(e) {
+            // Clear any existing dropoff marker
+            if (ridehailingData.dropoff) {
+                drawnItems.removeLayer(ridehailingData.dropoff.marker);
+            }
+            
+            // Use the locked color (don't read from picker)
+            
+            const marker = L.marker(e.latlng, {
+                icon: new L.Icon({
+                    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${getColorName(ridehailingData.color)}.png`,
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                })
+            }).addTo(drawnItems);
+            
+            marker.bindPopup(`
+                <div>
+                    <strong>🏁 Drop-off Point</strong><br>
+                    <button onclick="deleteRidehailingRoute()" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-top: 5px;">
+                        🗑️ Delete Route
+                    </button>
+                </div>
+            `);
+            ridehailingData.dropoffs = [{ marker: marker, latlng: e.latlng }];
+            
+            connectDropoffToRoad(e.latlng);
+            
+            ridehailingData.step = 4;
+            updateRidehailingStatus();
+            
+            map.off('click', dropoffHandler);
+            document.getElementById('saveRidehailing').style.display = 'block';
+            hideInstructionOverlay();
+            showSuccessMessage('Route connected! Pickup → Road → Dropoff complete. You can now save.');
+        };
+        
+        map.on('click', dropoffHandler);
+    }
+    
+    function updateRidehailingStatus() {
+        document.getElementById('currentStep').textContent = ridehailingData.step;
+        
+        const steps = {
+            0: 'Choose route color',
+            1: 'Select pickup point',
+            2: 'Draw road (or skip)',
+            3: 'Add drop-off points',
+            4: 'Ready to save'
+        };
+        
+        document.getElementById('stepDescription').textContent = steps[ridehailingData.step] || 'Complete';
+        
+        // Update step indicators
+        const statusDiv = document.getElementById('stepStatus');
+        const indicators = statusDiv.querySelectorAll('div');
+        indicators[0].innerHTML = (ridehailingData.color && ridehailingData.step > 0 ? '✓' : '○') + ' Color: ' + (ridehailingData.color && ridehailingData.step > 0 ? 'Selected' : 'Not selected');
+        indicators[1].innerHTML = (ridehailingData.pickup ? '✓' : '○') + ' Pickup Point: ' + (ridehailingData.pickup ? 'Selected' : 'Not selected');
+        indicators[2].innerHTML = (ridehailingData.road ? '✓' : '○') + ' Road: ' + (ridehailingData.road ? 'Drawn' : 'Skipped (will auto-route)');
+        indicators[3].innerHTML = (ridehailingData.dropoffs && ridehailingData.dropoffs.length > 0 ? '✓' : '○') + ' Drop-off Points: ' + (ridehailingData.dropoffs ? ridehailingData.dropoffs.length : 0) + ' selected';
+    }
+    
+    // Save ridehailing route
+    document.getElementById('saveRidehailing').addEventListener('click', function() {
+        const routeName = document.getElementById('ridehailingName').value.trim();
+        if (!routeName) {
+            showCustomModal('Missing Information', 'Please enter a route name!');
+            return;
+        }
+        
+        if (!ridehailingData.pickup || ridehailingData.dropoffs.length === 0) {
+            showCustomModal('Incomplete Route', 'Please complete pickup point and at least one dropoff point!');
+            return;
+        }
+        
+        // Show loading state
+        const saveButton = document.getElementById('saveRidehailing');
+        const originalText = saveButton.innerHTML;
+        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Saving...';
+        saveButton.disabled = true;
+        showLoadingOverlay('Saving ridehailing route...');
+        
+        // Get image files
+        const pickupImages = document.getElementById('pickupImages').files;
+        const dropoffImages = document.getElementById('dropoffImages').files;
+        
+        const ridehailingRouteData = {
+            name: routeName,
+            description: document.getElementById('ridehailingDescription').value,
+            color: ridehailingData.color,
+            pickup_point: {
+                lat: ridehailingData.pickup.latlng.lat,
+                lng: ridehailingData.pickup.latlng.lng,
+                images: pickupImages
+            },
+            road_coordinates: ridehailingData.road ? ridehailingData.road.coordinates.map(point => ({
+                lat: point.lat,
+                lng: point.lng
+            })) : [],
+            dropoff_points: ridehailingData.dropoffs.map(dropoff => ({
+                lat: dropoff.latlng.lat,
+                lng: dropoff.latlng.lng,
+                name: dropoff.name,
+                images: dropoffImages
+            })),
+            dropoff_routes: ridehailingData.dropoffRoutes ? ridehailingData.dropoffRoutes.map(route => 
+                route.getLatLngs().map(latlng => ({ lat: latlng.lat, lng: latlng.lng }))
+            ) : []
+        };
+        
+        saveRidehailingWithImages(ridehailingRouteData, function() {
+            // Reset button state on completion
+            saveButton.innerHTML = originalText;
+            saveButton.disabled = false;
+            hideLoadingOverlay();
+        });
+    });
+    
+    // Redo current step
+    document.getElementById('redoCurrentStep').addEventListener('click', function() {
+        const currentStep = ridehailingData.step;
+        stopDrawing();
+        hideInstructionOverlay();
+        
+        if (currentStep === 1 || currentStep === 2) {
+            // Redo pickup point
+            if (ridehailingData.pickup) {
+                drawnItems.removeLayer(ridehailingData.pickup.marker);
+                ridehailingData.pickup = null;
+            }
+            ridehailingData.step = 1;
+            updateRidehailingStatus();
+            showInstructionOverlay('Step 2 of 4: Select Pickup Point', 'Click anywhere on the map to place the pickup point.');
+            startPickupSelection();
+        } else if (currentStep === 3) {
+            // Redo road drawing
+            if (ridehailingData.road) {
+                drawnItems.removeLayer(ridehailingData.road.polyline);
+                ridehailingData.road = null;
+            }
+            ridehailingData.step = 2;
+            updateRidehailingStatus();
+            showInstructionOverlay('Step 3 of 4: Draw Road Route', '<strong>Option A:</strong> Click points to draw<br><strong>Option B:</strong> Press <kbd style="background: #fff; padding: 2px 8px; border: 1px solid #ddd; border-radius: 3px;">ESC</kbd> to skip<br><br>Right-click or ESC to finish');
+            startRoadDrawing();
+        } else if (currentStep === 4) {
+            // Redo dropoff point
+            if (ridehailingData.dropoff) {
+                drawnItems.removeLayer(ridehailingData.dropoff.marker);
+                ridehailingData.dropoff = null;
+            }
+            document.getElementById('saveRidehailing').style.display = 'none';
+            ridehailingData.step = 3;
+            updateRidehailingStatus();
+            showInstructionOverlay('Step 4 of 4: Add Drop-off Points', 'Click map to add drop-off points. Click "Finish Drop-offs" when done.');
+            startMultipleDropoffSelection();
+        }
+    });
+    
+    // Reset ridehailing
+    document.getElementById('resetRidehailing').addEventListener('click', function() {
+        if (ridehailingData.pickup) drawnItems.removeLayer(ridehailingData.pickup.marker);
+        if (ridehailingData.road) drawnItems.removeLayer(ridehailingData.road.polyline);
+        if (ridehailingData.dropoff) drawnItems.removeLayer(ridehailingData.dropoff.marker);
+        
+        resetRidehailingData();
+        document.getElementById('saveRidehailing').style.display = 'none';
+        stopDrawing();
+        hideInstructionOverlay();
+        showSuccessMessage('Ridehailing route reset. You can start over.');
+    });
+    
+    // Delete current route button
+    document.getElementById('deleteCurrentRoute').addEventListener('click', function() {
+        deleteRidehailingRoute();
+    });
+    
+    // Finish dropoffs button
+    document.getElementById('finishDropoffs').addEventListener('click', function() {
+        if (ridehailingData.dropoffs.length === 0) {
+            showCustomModal('Missing Drop-off', 'Please add at least one drop-off point!');
+            return;
+        }
+        
+        map.off('click', ridehailingData.dropoffHandler);
+        document.getElementById('finishDropoffs').style.display = 'none';
+        document.getElementById('saveRidehailing').style.display = 'block';
+        ridehailingData.step = 4;
+        updateRidehailingStatus();
+        hideInstructionOverlay();
+        showSuccessMessage(`Route complete with ${ridehailingData.dropoffs.length} drop-off points! Ready to save.`);
+    });
+    
+    // Connect dropoff to pickup using OSRM routing
+    function connectDropoffToRoad(dropoffLatLng) {
+        if (ridehailingData.pickup) {
+            const pickupPoint = ridehailingData.pickup.latlng;
+            const url = `https://router.project-osrm.org/route/v1/driving/${pickupPoint.lng},${pickupPoint.lat};${dropoffLatLng.lng},${dropoffLatLng.lat}?overview=full&geometries=geojson`;
+            
+            fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.routes && data.routes[0] && data.routes[0].geometry) {
+                    const routeCoords = data.routes[0].geometry.coordinates.map(coord => ({lat: coord[1], lng: coord[0]}));
+                    
+                    // Create separate polyline for this dropoff route
+                    const dropoffRoute = L.polyline(routeCoords, {
+                        color: ridehailingData.color,
+                        weight: 3,
+                        opacity: 0.7,
+                        dashArray: '5, 5' // Dashed line to distinguish from main road
+                    }).addTo(drawnItems);
+                    
+                    // Store the route for cleanup
+                    if (!ridehailingData.dropoffRoutes) ridehailingData.dropoffRoutes = [];
+                    ridehailingData.dropoffRoutes.push(dropoffRoute);
+                } else {
+                    // Fallback: direct line if OSRM fails
+                    const directRoute = L.polyline([pickupPoint, dropoffLatLng], {
+                        color: ridehailingData.color,
+                        weight: 3,
+                        opacity: 0.7,
+                        dashArray: '5, 5'
+                    }).addTo(drawnItems);
+                    
+                    if (!ridehailingData.dropoffRoutes) ridehailingData.dropoffRoutes = [];
+                    ridehailingData.dropoffRoutes.push(directRoute);
+                }
+            })
+            .catch(() => {
+                // Fallback: direct line if network fails
+                const directRoute = L.polyline([pickupPoint, dropoffLatLng], {
+                    color: ridehailingData.color,
+                    weight: 3,
+                    opacity: 0.7,
+                    dashArray: '5, 5'
+                }).addTo(drawnItems);
+                
+                if (!ridehailingData.dropoffRoutes) ridehailingData.dropoffRoutes = [];
+                ridehailingData.dropoffRoutes.push(directRoute);
+            });
+        }
+    }
+    
+    // Remove dropoff function
+    window.removeDropoff = function(index) {
+        if (ridehailingData.dropoffs[index]) {
+            drawnItems.removeLayer(ridehailingData.dropoffs[index].marker);
+            ridehailingData.dropoffs.splice(index, 1);
+            updateRidehailingStatus();
+            showSuccessMessage('Drop-off point removed.');
+        }
+    };
+    
+    // Add another dropoff function
+    window.addAnotherDropoff = function(pickupPoint) {
+        const pickupColor = pickupPoint?.icon_color || '#007bff';
+        const pickupLatLng = pickupPoint ? { lat: pickupPoint.latitude, lng: pickupPoint.longitude } : null;
+        
+        const modal = document.createElement('div');
+        modal.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); z-index: 10000; min-width: 300px;';
+        modal.innerHTML = `
+            <h3 style="margin: 0 0 15px 0; color: #531B24;">Add Drop-off Point</h3>
+            <input type="text" id="dropoffNameInput" placeholder="Drop-off name" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px;">
+            <input type="file" id="dropoffImageInput" accept="image/*" multiple style="width: 100%; margin-bottom: 10px;">
+            <small style="color: #666; display: block; margin-bottom: 10px;">Add photos (max 3 images)</small>
+            <div style="display: flex; gap: 10px;">
+                <button id="dropoffOkBtn" style="flex: 1; padding: 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">OK</button>
+                <button id="dropoffCancelBtn" style="flex: 1; padding: 10px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        document.getElementById('dropoffCancelBtn').onclick = () => modal.remove();
+        document.getElementById('dropoffOkBtn').onclick = () => {
+            const dropoffName = document.getElementById('dropoffNameInput').value.trim();
+            const imageFiles = document.getElementById('dropoffImageInput').files;
+            if (!dropoffName) {
+                showCustomModal('Missing Name', 'Please enter a name');
+                return;
+            }
+            
+            modal.remove();
+            showInstructionOverlay('Add Drop-off Point', 'Click anywhere on the map to place the drop-off point.');
+            
+            const dropoffHandler = function(e) {
+                map.off('click', dropoffHandler);
+                hideInstructionOverlay();
+                
+                if (pickupLatLng) {
+                    const url = `https://router.project-osrm.org/route/v1/driving/${pickupLatLng.lng},${pickupLatLng.lat};${e.latlng.lng},${e.latlng.lat}?overview=full&geometries=geojson`;
+                    fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.routes && data.routes[0] && data.routes[0].geometry) {
+                            const coords = data.routes[0].geometry.coordinates.map(coord => ({ lat: coord[1], lng: coord[0] }));
+                            
+                            const formData = new FormData();
+                            formData.append('name', dropoffName);
+                            formData.append('point_type', 'dropoff');
+                            formData.append('icon_color', pickupColor);
+                            formData.append('latitude', e.latlng.lat);
+                            formData.append('longitude', e.latlng.lng);
+                            formData.append('description', `Drop-off for ${pickupPoint.name}`);
+                            
+                            Array.from(imageFiles).slice(0, 3).forEach(file => formData.append('images', file));
+                            
+                            const roadData = {
+                                name: `Route to ${dropoffName}`,
+                                highlight_type: 'tourist_route',
+                                stroke_color: pickupColor,
+                                stroke_width: 5,
+                                description: `Auto-routed from ${pickupPoint.name}`,
+                                road_coordinates: coords
+                            };
+                            
+                            const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                            
+                            Promise.all([
+                                fetch('/routemanagement/save_point/', {
+                                    method: 'POST',
+                                    headers: { 'X-CSRFToken': csrftoken },
+                                    body: formData
+                                }),
+                                fetch('/routemanagement/save_road/', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+                                    body: JSON.stringify(roadData)
+                                })
+                            ])
+                            .then(() => {
+                                showSuccessMessage(`${dropoffName} and route saved successfully!`);
+                                loadExistingData();
+                            })
+                            .catch(err => showCustomModal('Error', 'Error saving: ' + err.message, 'error'));
+                        }
+                    })
+                    .catch(() => showCustomModal('Error', 'Error creating route', 'error'));
+                }
+            };
+            
+            map.on('click', dropoffHandler);
+        };
+    };
+    
+    // Confirm color button
+    document.getElementById('confirmColor').addEventListener('click', function() {
+        ridehailingData.color = document.getElementById('ridehailingColor').value;
+        ridehailingData.step = 1;
+        updateRidehailingStatus();
+        
+        // Lock color picker
+        document.getElementById('ridehailingColor').disabled = true;
+        document.getElementById('confirmColor').style.display = 'none';
+        
+        // Show pickup image section
+        document.getElementById('pickupImageSection').style.display = 'block';
+        
+        hideInstructionOverlay();
+        showInstructionOverlay('Step 2 of 4: Select Pickup Point', 'Click anywhere on the map to place the pickup point.');
+        startPickupSelection();
+    });
+    
+    // Instruction overlay functions
+    function showInstructionOverlay(title, text) {
+        hideInstructionOverlay(); // Remove any existing overlay
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'instruction-overlay';
+        overlay.id = 'instructionOverlay';
+        overlay.innerHTML = `
+            <div class="instruction-title">${title}</div>
+            <div class="instruction-text">${text}</div>
+        `;
+        
+        document.body.appendChild(overlay);
+    }
+    
+    function hideInstructionOverlay() {
+        const overlay = document.getElementById('instructionOverlay');
+        if (overlay) {
+            overlay.remove();
+        }
+    }
+    
+    function showSuccessMessage(message) {
+        const successDiv = document.createElement('div');
+        successDiv.className = 'success-message';
+        successDiv.innerHTML = `<i class="fas fa-check-circle mr-2"></i>${message}`;
+        
+        document.body.appendChild(successDiv);
+        
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+            if (successDiv.parentNode) {
+                successDiv.remove();
+            }
+        }, 3000);
+    }
+    
+    // Show loading overlay
+    function showLoadingOverlay(message = 'Processing...') {
+        const overlay = document.createElement('div');
+        overlay.className = 'loading-overlay';
+        overlay.id = 'loadingOverlay';
+        overlay.innerHTML = `
+            <div class="loading-spinner"></div>
+            <div>${message}</div>
+        `;
+        document.body.appendChild(overlay);
+    }
+    
+    // Hide loading overlay
+    function hideLoadingOverlay() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            overlay.remove();
+        }
+    }
+    
+    // Custom routing with waypoints
+    let customWaypoints = [];
+    let customTempMarkers = [];
+    
+    function startCustomRouting(startPoint) {
+        customWaypoints = [startPoint];
+        customTempMarkers = [];
+        
+        const waypointHandler = function(e) {
+            // Add waypoint marker
+            const marker = L.marker(e.latlng, {
+                icon: new L.Icon({
+                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconSize: [20, 32],
+                    iconAnchor: [10, 32],
+                    popupAnchor: [1, -28],
+                    shadowSize: [32, 32]
+                })
+            }).addTo(drawnItems);
+            
+            marker.bindPopup(`Waypoint ${customWaypoints.length - 1}`);
+            customTempMarkers.push(marker);
+            customWaypoints.push(e.latlng);
+            
+            updateCustomRouteInstructions();
+        };
+        
+        const finishCustomRoute = function(e) {
+            if (customWaypoints.length >= 2) {
+                // Remove waypoint markers
+                customTempMarkers.forEach(marker => drawnItems.removeLayer(marker));
+                customTempMarkers = [];
+                
+                map.off('click', waypointHandler);
+                map.off('contextmenu', finishCustomRoute);
+                document.removeEventListener('keydown', customKeyHandler);
+                
+                createCustomRoute(customWaypoints);
+            }
+        };
+        
+        const customKeyHandler = function(e) {
+            if (e.key === 'Escape' && customWaypoints.length >= 2) {
+                finishCustomRoute();
+            }
+        };
+        
+        map.on('click', waypointHandler);
+        map.on('contextmenu', finishCustomRoute);
+        document.addEventListener('keydown', customKeyHandler);
+    }
+    
+    function updateCustomRouteInstructions() {
+        const count = customWaypoints.length - 1;
+        if (count === 1) {
+            showInstructionOverlay('Custom Route Mode', 'First waypoint added. Click more waypoints or right-click/ESC to create route.');
+        } else if (count > 1) {
+            showInstructionOverlay('Custom Route Mode', `${count - 1} waypoint(s) added. Click more waypoints or right-click/ESC to create route.`);
+        } else {
+            showInstructionOverlay('Custom Route Mode', 'Click waypoints to force route through specific roads, then right-click or ESC to finish.');
+        }
+    }
+    
+    function createCustomRoute(waypoints) {
+        hideInstructionOverlay();
+        showInstructionOverlay('Creating Custom Route...', 'Calculating route through your waypoints...');
+        
+        // Use exact same OSRM API as auto routing for identical accuracy
+        const waypointStr = waypoints.map(wp => `${wp.lng},${wp.lat}`).join(';');
+        const url = `https://router.project-osrm.org/route/v1/driving/${waypointStr}?overview=full&geometries=geojson`;
+        
+        fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            hideInstructionOverlay();
+            if (data.routes && data.routes[0] && data.routes[0].geometry) {
+                const coordinates = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                
+                if (ridehailingData.road) {
+                    drawnItems.removeLayer(ridehailingData.road.polyline);
+                }
+                
+                const polyline = L.polyline(coordinates, {
+                    color: ridehailingData.color,
+                    weight: 5
+                }).addTo(drawnItems);
+                
+                ridehailingData.road = { 
+                    polyline: polyline, 
+                    coordinates: coordinates.map(coord => ({ lat: coord[0], lng: coord[1] }))
+                };
+                
+                // Set dropoff to last waypoint
+                const lastWaypoint = waypoints[waypoints.length - 1];
+                if (ridehailingData.dropoff) {
+                    drawnItems.removeLayer(ridehailingData.dropoff.marker);
+                }
+                
+                const marker = L.marker(lastWaypoint, {
+                    icon: new L.Icon({
+                        iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${getColorName(ridehailingData.color)}.png`,
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowSize: [41, 41]
+                    })
+                }).addTo(drawnItems);
+                
+                marker.bindPopup(`
+                    <div>
+                        <strong>🏁 Drop-off Point</strong><br>
+                        <button onclick="deleteRidehailingRoute()" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-top: 5px;">
+                            🗑️ Delete Route
+                        </button>
+                    </div>
+                `);
+                ridehailingData.dropoff = { marker: marker, latlng: lastWaypoint };
+                ridehailingData.step = 4;
+                updateRidehailingStatus();
+                document.getElementById('saveRidehailing').style.display = 'block';
+                document.getElementById('autoRoute').style.display = 'none';
+                document.getElementById('customRoute').style.display = 'none';
+                document.getElementById('finishRoadDrawing').style.display = 'none';
+                showSuccessMessage(`Custom route created through ${waypoints.length - 1} waypoints!`);
+            } else {
+                showInstructionOverlay('Route Error', 'Could not create custom route. Please try again.');
+                setTimeout(hideInstructionOverlay, 2000);
+            }
+        })
+        .catch(error => {
+            hideInstructionOverlay();
+            showInstructionOverlay('Route Error', 'Could not create custom route. Please try again.');
+            setTimeout(hideInstructionOverlay, 2000);
+        });
+    }
+    
+
+    
+    // Auto route with multiple options
+    function createAutoRouteWithOptions(startPoint, endPoint) {
+        if (!endPoint) {
+            const tempHandler = function(e) {
+                map.off('click', tempHandler);
+                createAutoRouteWithOptions(startPoint, e.latlng);
+            };
+            map.on('click', tempHandler);
+            return;
+        }
+        
+        hideInstructionOverlay();
+        showInstructionOverlay('Finding Routes...', 'Calculating multiple route options...');
+        
+        // Get multiple route alternatives with different parameters
+        const url = `https://router.project-osrm.org/route/v1/driving/${startPoint.lng},${startPoint.lat};${endPoint.lng},${endPoint.lat}?overview=full&geometries=geojson&alternatives=true&steps=true&continue_straight=false`;
+        
+        fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            hideInstructionOverlay();
+            if (data.routes && data.routes.length > 0) {
+                showRouteOptions(data.routes, startPoint, endPoint);
+            } else {
+                showInstructionOverlay('Route Error', 'Could not create auto route. Please try again.');
+                setTimeout(hideInstructionOverlay, 2000);
+            }
+        })
+        .catch(error => {
+            hideInstructionOverlay();
+            showInstructionOverlay('Route Error', 'Could not create auto route. Please try again.');
+            setTimeout(hideInstructionOverlay, 2000);
+        });
+    }
+    
+    function showRouteOptions(routes, startPoint, endPoint) {
+        // Clear any existing routes
+        if (ridehailingData.road) {
+            drawnItems.removeLayer(ridehailingData.road.polyline);
+        }
+        
+        let routeOverlays = [];
+        let selectedRoute = null;
+        
+        // Show all route options with different colors
+        routes.forEach((route, index) => {
+            const coordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+            const colors = ['#007bff', '#28a745', '#ffc107', '#dc3545'];
+            const color = colors[index] || '#6c757d';
+            
+            const polyline = L.polyline(coordinates, {
+                color: color,
+                weight: index === 0 ? 6 : 4,
+                opacity: index === 0 ? 1 : 0.7
+            }).addTo(drawnItems);
+            
+            const distance = (route.distance / 1000).toFixed(1);
+            const duration = Math.round(route.duration / 60);
+            const routeType = index === 0 ? 'Fastest' : index === 1 ? 'Alternative' : `Option ${index + 1}`;
+            
+            polyline.bindPopup(`<strong>${routeType} Route</strong><br>${distance}km, ${duration}min<br><button onclick="selectRoute(${index})" style="background: ${color}; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">Select This Route</button>`);
+            
+            routeOverlays.push({
+                polyline: polyline,
+                coordinates: coordinates,
+                route: route
+            });
+        });
+        
+        // Store for selection
+        window.routeOptions = routeOverlays;
+        window.routeEndPoint = endPoint;
+        
+        const routeText = routes.length === 1 ? 'Found 1 route option' : `Found ${routes.length} route options`;
+        showInstructionOverlay('Choose Route', `${routeText}. Click on a route line to see details and select it.`);
+    }
+    
+    // Global function for route selection
+    window.selectRoute = function(index) {
+        const selectedOverlay = window.routeOptions[index];
+        
+        // Clear all route overlays
+        window.routeOptions.forEach(overlay => {
+            drawnItems.removeLayer(overlay.polyline);
+        });
+        
+        // Create final selected route
+        const polyline = L.polyline(selectedOverlay.coordinates, {
+            color: ridehailingData.color,
+            weight: 5
+        }).addTo(drawnItems);
+        
+        ridehailingData.road = { 
+            polyline: polyline, 
+            coordinates: selectedOverlay.coordinates.map(coord => ({ lat: coord[0], lng: coord[1] }))
+        };
+        
+        // Add dropoff marker
+        if (ridehailingData.dropoff) {
+            drawnItems.removeLayer(ridehailingData.dropoff.marker);
+        }
+        
+        const marker = L.marker(window.routeEndPoint, {
+            icon: new L.Icon({
+                iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${getColorName(ridehailingData.color)}.png`,
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            })
+        }).addTo(drawnItems);
+        
+        marker.bindPopup(`
+            <div>
+                <strong>🏁 Drop-off Point</strong><br>
+                <button onclick="deleteRidehailingRoute()" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-top: 5px;">
+                    🗑️ Delete Route
+                </button>
+            </div>
+        `);
+        ridehailingData.dropoff = { marker: marker, latlng: window.routeEndPoint };
+        ridehailingData.step = 4;
+        updateRidehailingStatus();
+        document.getElementById('saveRidehailing').style.display = 'block';
+        document.getElementById('autoRoute').style.display = 'none';
+        document.getElementById('customRoute').style.display = 'none';
+        document.getElementById('finishRoadDrawing').style.display = 'none';
+        hideInstructionOverlay();
+        const selectedType = index === 0 ? 'Fastest' : index === 1 ? 'Alternative' : `Option ${index + 1}`;
+        showSuccessMessage(`${selectedType} route selected! Ready to save.`);
+    };
+    
+    // Snap point to nearest road using OSRM with larger radius
+    function snapPointToRoad(point, callback) {
+        const url = `https://router.project-osrm.org/nearest/v1/driving/${point.lng},${point.lat}?number=1&radius=500`;
+        
+        fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.waypoints && data.waypoints[0] && data.waypoints[0].location) {
+                const snapped = {
+                    lat: data.waypoints[0].location[1],
+                    lng: data.waypoints[0].location[0]
+                };
+                const distance = Math.round(data.waypoints[0].distance || 0);
+                if (distance > 10) {
+                    showSuccessMessage(`Snapped to road (${distance}m away)`);
+                }
+                callback(snapped);
+            } else {
+                callback(point);
+            }
+        })
+        .catch(error => {
+            callback(point);
+        });
+    }
+    
+    // Auto route creation function
+    function createAutoRoute(startPoint, endPoint) {
+        if (!endPoint) {
+            const tempHandler = function(e) {
+                map.off('click', tempHandler);
+                createAutoRoute(startPoint, e.latlng);
+            };
+            map.on('click', tempHandler);
+            return;
+        }
+        
+        const url = `https://router.project-osrm.org/route/v1/driving/${startPoint.lng},${startPoint.lat};${endPoint.lng},${endPoint.lat}?overview=full&geometries=geojson`;
+        
+        fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            hideInstructionOverlay();
+            if (data.routes && data.routes[0] && data.routes[0].geometry) {
+                const coordinates = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                
+                if (ridehailingData.road) {
+                    drawnItems.removeLayer(ridehailingData.road.polyline);
+                }
+                
+                const polyline = L.polyline(coordinates, {
+                    color: ridehailingData.color,
+                    weight: 5
+                }).addTo(drawnItems);
+                
+                ridehailingData.road = { 
+                    polyline: polyline, 
+                    coordinates: coordinates.map(coord => ({ lat: coord[0], lng: coord[1] }))
+                };
+                
+                if (ridehailingData.dropoff) {
+                    drawnItems.removeLayer(ridehailingData.dropoff.marker);
+                }
+                
+                const marker = L.marker(endPoint, {
+                    icon: new L.Icon({
+                        iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${getColorName(ridehailingData.color)}.png`,
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowSize: [41, 41]
+                    })
+                }).addTo(drawnItems);
+                
+                marker.bindPopup(`
+                    <div>
+                        <strong>🏁 Drop-off Point</strong><br>
+                        <button onclick="deleteRidehailingRoute()" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-top: 5px;">
+                            🗑️ Delete Route
+                        </button>
+                    </div>
+                `);
+                ridehailingData.dropoff = { marker: marker, latlng: endPoint };
+                ridehailingData.step = 4;
+                updateRidehailingStatus();
+                document.getElementById('saveRidehailing').style.display = 'block';
+                document.getElementById('autoRoute').style.display = 'none';
+                document.getElementById('customRoute').style.display = 'none';
+                document.getElementById('finishRoadDrawing').style.display = 'none';
+                showSuccessMessage('Auto route created! Ready to save.');
+            } else {
+                showInstructionOverlay('Route Error', 'Could not create auto route. Please draw manually.');
+                setTimeout(hideInstructionOverlay, 2000);
+            }
+        })
+        .catch(error => {
+            hideInstructionOverlay();
+            showInstructionOverlay('Route Error', 'Could not create auto route. Please draw manually.');
+            setTimeout(hideInstructionOverlay, 2000);
+        });
+    }
+    
+    // Display ridehailing routes from database
+    function displayRidehailingRoutes(routes) {
+        console.log('Displaying ridehailing routes:', routes);
+        
+        if (routes.length === 0) {
+            console.log('No ridehailing routes found');
+            return;
+        }
+        
+        // Update legend to show ridehailing routes
+        const legend = document.querySelector('.map-legend');
+        if (legend) {
+            const ridehailingSection = document.createElement('div');
+            ridehailingSection.innerHTML = `
+                <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd;">
+                    <div class="legend-title">Ridehailing Routes (${routes.length})</div>
+                    ${routes.map(route => `
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: ${route.color};"></div>
+                            <span>${route.route_id.replace('ridehailing_', '').slice(-4)}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            legend.appendChild(ridehailingSection);
+        }
+        
+        routes.forEach(route => {
+            try {
+                console.log(`Ridehailing route: ${route.route_id} with color ${route.color}`);
+                console.log(`- Pickup: ${route.pickup_point_id}`);
+                console.log(`- Dropoffs: ${route.dropoff_point_ids}`);
+                console.log(`- Roads: ${route.road_highlight_ids}`);
+                
+            } catch (error) {
+                console.error(`Error displaying ridehailing route ${route.route_id}:`, error);
+            }
+        });
+        
+        showSuccessMessage(`Loaded ${routes.length} ridehailing route(s) successfully`);
+    }
+    
+    // Global delete functions
+    window.deleteRidehailingRoute = function() {
+        if (ridehailingData.pickup) drawnItems.removeLayer(ridehailingData.pickup.marker);
+        if (ridehailingData.road) drawnItems.removeLayer(ridehailingData.road.polyline);
+        ridehailingData.dropoffs.forEach(dropoff => drawnItems.removeLayer(dropoff.marker));
+        if (ridehailingData.dropoffRoutes) ridehailingData.dropoffRoutes.forEach(route => drawnItems.removeLayer(route));
+        resetRidehailingData();
+        document.getElementById('saveRidehailing').style.display = 'none';
+        stopDrawing();
+        hideInstructionOverlay();
+        showSuccessMessage('Ridehailing route deleted.');
+    };
+    
+    window.deleteMapPoint = function(pointId) {
+        showConfirmModal('Are you sure you want to delete this point?', function() {
+            const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            
+            fetch(`/routemanagement/delete_point/${pointId}/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                }
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showSuccessMessage('Point deleted successfully!');
+                    loadExistingData(); // Reload map data
+                } else {
+                    showErrorModal('Error deleting point: ' + result.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showErrorModal('Error deleting point');
+            });
+        });
+    };
+    
+    window.deleteMapRoad = function(roadId) {
+        showConfirmModal('Are you sure you want to delete this road highlight?', function() {
+            const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            
+            fetch(`/routemanagement/delete_road/${roadId}/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                }
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showSuccessMessage('Road highlight deleted successfully!');
+                    loadExistingData(); // Reload map data
+                } else {
+                    showErrorModal('Error deleting road: ' + result.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showErrorModal('Error deleting road highlight');
+            });
+        });
+    };
+    
+    // Image gallery modal with navigation
+    window.openImageGallery = function(imageUrls, pointName) {
+        if (!imageUrls || imageUrls.length === 0) {
+            showSuccessMessage('No images available');
+            return;
+        }
+        
+        let currentIndex = 0;
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.95); z-index: 10000; display: flex; 
+            align-items: center; justify-content: center;
+        `;
+        
+        function updateImage() {
+            const imageContainer = modal.querySelector('#imageContainer');
+            const counter = modal.querySelector('#imageCounter');
+            imageContainer.innerHTML = `<img src="${imageUrls[currentIndex]}" style="max-width: 90vw; max-height: 80vh; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);" alt="${pointName}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vdCBhdmFpbGFibGU8L3RleHQ+PC9zdmc+'">`;
+            if (counter) counter.textContent = `${currentIndex + 1} / ${imageUrls.length}`;
+        }
+        
+        function prevImage() {
+            currentIndex = currentIndex > 0 ? currentIndex - 1 : imageUrls.length - 1;
+            updateImage();
+        }
+        
+        function nextImage() {
+            currentIndex = currentIndex < imageUrls.length - 1 ? currentIndex + 1 : 0;
+            updateImage();
+        }
+        
+        modal.innerHTML = `
+            <div style="position: relative; text-align: center;">
+                <div style="position: absolute; top: -50px; right: -20px; color: white; font-size: 30px; cursor: pointer; background: rgba(0,0,0,0.7); border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; z-index: 10001;" onclick="this.parentElement.parentElement.remove()">&times;</div>
+                
+                ${imageUrls.length > 1 ? `
+                <div id="prevBtn" style="position: absolute; left: -60px; top: 50%; transform: translateY(-50%); color: white; font-size: 30px; cursor: pointer; background: rgba(0,0,0,0.7); border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; z-index: 10001;">‹</div>
+                <div id="nextBtn" style="position: absolute; right: -60px; top: 50%; transform: translateY(-50%); color: white; font-size: 30px; cursor: pointer; background: rgba(0,0,0,0.7); border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; z-index: 10001;">›</div>
+                ` : ''}
+                
+                <div id="imageContainer"></div>
+                
+                <div style="margin-top: 20px; color: white; font-size: 18px; font-weight: bold;">${pointName}</div>
+                ${imageUrls.length > 1 ? '<div id="imageCounter" style="margin-top: 10px; color: white; font-size: 14px;"></div>' : ''}
+            </div>
+        `;
+        
+        // Add click handlers after modal is created
+        if (imageUrls.length > 1) {
+            modal.querySelector('#prevBtn').onclick = prevImage;
+            modal.querySelector('#nextBtn').onclick = nextImage;
+        }
+        
+        modal.onclick = function(e) {
+            if (e.target === modal) modal.remove();
+        };
+        
+        // Keyboard navigation
+        const keyHandler = function(e) {
+            if (e.key === 'Escape') {
+                modal.remove();
+                document.removeEventListener('keydown', keyHandler);
+            } else if (e.key === 'ArrowLeft' && imageUrls.length > 1) {
+                prevImage();
+            } else if (e.key === 'ArrowRight' && imageUrls.length > 1) {
+                nextImage();
+            }
+        };
+        document.addEventListener('keydown', keyHandler);
+        
+        document.body.appendChild(modal);
+        updateImage();
+    };
+    
+    // Keep old function for backward compatibility
+    window.openImageModal = function(imageUrl, pointName) {
+        openImageGallery([imageUrl], pointName);
+    };
+    
+    // Image preview functionality
+    function setupImagePreview() {
+        const imageInput = document.getElementById('pointImage');
+        const previewDiv = document.getElementById('imagePreview');
+        
+        if (imageInput && previewDiv) {
+            imageInput.addEventListener('change', function(e) {
+                previewDiv.innerHTML = '';
+                const files = Array.from(e.target.files).slice(0, 5); // Limit to 5 images
+                
+                files.forEach((file, index) => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.style.cssText = 'width: 60px; height: 45px; object-fit: cover; border-radius: 4px; border: 2px solid #ddd;';
+                        previewDiv.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                });
+                
+                if (e.target.files.length > 5) {
+                    showSuccessMessage('Only first 5 images will be uploaded');
+                }
+            });
+        }
+    }
+    
+    function setupRidehailingImagePreview() {
+        // Pickup images preview
+        const pickupInput = document.getElementById('pickupImages');
+        const pickupPreview = document.getElementById('pickupImagePreview');
+        
+        if (pickupInput && pickupPreview) {
+            pickupInput.addEventListener('change', function(e) {
+                pickupPreview.innerHTML = '';
+                const files = Array.from(e.target.files).slice(0, 3);
+                
+                files.forEach((file) => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.style.cssText = 'width: 50px; height: 40px; object-fit: cover; border-radius: 4px; border: 2px solid #007bff;';
+                        pickupPreview.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                });
+                
+                if (e.target.files.length > 3) {
+                    showSuccessMessage('Only first 3 pickup images will be uploaded');
+                }
+            });
+        }
+        
+        // Dropoff images preview
+        const dropoffInput = document.getElementById('dropoffImages');
+        const dropoffPreview = document.getElementById('dropoffImagePreview');
+        
+        if (dropoffInput && dropoffPreview) {
+            dropoffInput.addEventListener('change', function(e) {
+                dropoffPreview.innerHTML = '';
+                const files = Array.from(e.target.files).slice(0, 3);
+                
+                files.forEach((file) => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.style.cssText = 'width: 50px; height: 40px; object-fit: cover; border-radius: 4px; border: 2px solid #28a745;';
+                        dropoffPreview.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                });
+                
+                if (e.target.files.length > 3) {
+                    showSuccessMessage('Only first 3 dropoff images will be uploaded');
+                }
+            });
+        }
+    }
+    
+    // Save ridehailing with images
+    function saveRidehailingWithImages(routeData, callback) {
+        const formData = new FormData();
+        
+        // Add basic route data
+        formData.append('name', routeData.name);
+        formData.append('description', routeData.description);
+        formData.append('color', routeData.color);
+        formData.append('pickup_point', JSON.stringify({
+            lat: routeData.pickup_point.lat,
+            lng: routeData.pickup_point.lng
+        }));
+        formData.append('road_coordinates', JSON.stringify(routeData.road_coordinates));
+        formData.append('dropoff_points', JSON.stringify(routeData.dropoff_points.map(dp => ({
+            lat: dp.lat,
+            lng: dp.lng,
+            name: dp.name
+        }))));
+        formData.append('dropoff_routes', JSON.stringify(routeData.dropoff_routes));
+        
+        // Add pickup images
+        if (routeData.pickup_point.images) {
+            const pickupFiles = Array.from(routeData.pickup_point.images).slice(0, 3);
+            pickupFiles.forEach((file, index) => {
+                formData.append('pickup_images', file);
+            });
+        }
+        
+        // Add dropoff images
+        if (routeData.dropoff_points[0] && routeData.dropoff_points[0].images) {
+            const dropoffFiles = Array.from(routeData.dropoff_points[0].images).slice(0, 3);
+            dropoffFiles.forEach((file, index) => {
+                formData.append('dropoff_images', file);
+            });
+        }
+        
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        fetch('/routemanagement/save_ridehailing/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+            },
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.text();
+        })
+        .then(text => {
+            console.log('Raw response:', text);
+            
+            if (!text || text.trim() === '') {
+                throw new Error('Empty response from server');
+            }
+            
+            let result;
+            try {
+                result = JSON.parse(text);
+            } catch (parseError) {
+                console.error('JSON parse error:', parseError);
+                console.error('Response text:', text);
+                
+                // Try cleaning HTML entities
+                try {
+                    const cleanText = text.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+                    result = JSON.parse(cleanText);
+                } catch (secondParseError) {
+                    throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
+                }
+            }
+            
+            if (callback) callback();
+            if (result.success) {
+                showSuccessMessage('Ridehailing route saved successfully!');
+                clearCurrentDrawing();
+                loadExistingData();
+            } else {
+                showCustomModal('Save Error', `Error saving ridehailing route: ${result.error}`, 'error');
+            }
+        })
+        .catch(error => {
+            if (callback) callback();
+            console.error('Error saving ridehailing route:', error);
+            showCustomModal('Error', `Error saving ridehailing route: ${error.message}`, 'error');
+        });
+    }
+    
+    // Get point type icon
+    function getPointTypeIcon(pointType) {
+        const iconTypes = {
+            'tourist_spot': '🏛️',
+            'restaurant': '🍽️', 
+            'hotel': '🏨',
+            'shopping': '🛍️',
+            'beach': '🏖️',
+            'museum': '🏛️',
+            'park': '🌳',
+            'church': '⛪',
+            'viewpoint': '🌄'
+        };
+        return iconTypes[pointType] || null;
+    }
+    
+    // Update marker for point type (with or without icon)
+    function updateMarkerForPointType(marker, pointType, color) {
+        if (!marker || typeof marker.setIcon !== 'function') return;
+        
+        const emoji = getPointTypeIcon(pointType);
+        
+        if (emoji) {
+            // Use emoji icon
+            const emojiIcon = L.divIcon({
+                html: `<div style="background: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 16px; border: 2px solid #333; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">${emoji}</div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15],
+                popupAnchor: [0, -15],
+                className: 'emoji-marker'
+            });
+            marker.setIcon(emojiIcon);
+        } else {
+            // Use colored marker
+            const colorName = getColorName(color);
+            const colorIcon = new L.Icon({
+                iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${colorName}.png`,
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
+            marker.setIcon(colorIcon);
+        }
+    }
+    
+    // Update marker icon with selected color (for backward compatibility)
+    function updateMarkerIcon(marker, color) {
+        const pointType = document.getElementById('pointType').value;
+        updateMarkerForPointType(marker, pointType, color);
+    }
+    
+    // Utility functions
+    function showErrorModal(title, message) {
+        showCustomModal(title, message, 'error');
+    }
+    
+    function showConfirmModal(message, callback) {
+        showCustomConfirm('Confirm Action', message, callback);
+    }
+    
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Page loaded, initializing map...');
+        
+        // Check if Leaflet is loaded
+        if (typeof L === 'undefined') {
+            console.error('Leaflet library not loaded');
+            document.getElementById('map').innerHTML = '<div style="padding: 20px; text-align: center; color: red;">Map library failed to load. Please refresh the page.</div>';
+            return;
+        }
+        
+        // Wait a bit for all resources to load
+        setTimeout(() => {
+            try {
+                initMap();
+                console.log('Map initialized successfully');
+                
+                // Test if map is working
+                if (map && map.getCenter) {
+                    console.log('Map is functional at:', map.getCenter());
+                } else {
+                    throw new Error('Map object is not functional');
+                }
+                
+            } catch (error) {
+                console.error('Error initializing map:', error);
+                const mapElement = document.getElementById('map');
+                if (mapElement) {
+                    mapElement.innerHTML = `
+                        <div style="padding: 20px; text-align: center; color: red;">
+                            <h3>Map Error</h3>
+                            <p>Error: ${error.message}</p>
+                            <button onclick="location.reload()" style="background: #531B24; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 10px;">
+                                Refresh Page
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        }, 1000);
+        
+        // Setup image preview
+        setupImagePreview();
+        setupRidehailingImagePreview();
+        
+        // Color change handler - ensures all components use the same color
+        setTimeout(() => {
+            const colorPicker = document.getElementById('ridehailingColor');
+            if (colorPicker) {
+                colorPicker.addEventListener('change', function() {
+                    const newColor = this.value;
+                    ridehailingData.color = newColor;
+                    
+                    // Update pickup marker color
+                    if (ridehailingData.pickup) {
+                        ridehailingData.pickup.marker.setIcon(new L.Icon({
+                            iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${getColorName(newColor)}.png`,
+                            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+                        }));
+                    }
+                    
+                    // Update road color
+                    if (ridehailingData.road && ridehailingData.road.polyline) {
+                        ridehailingData.road.polyline.setStyle({ color: newColor });
+                    }
+                    
+                    // Update dropoff marker color
+                    if (ridehailingData.dropoff) {
+                        ridehailingData.dropoff.marker.setIcon(new L.Icon({
+                            iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${getColorName(newColor)}.png`,
+                            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+                        }));
+                    }
+                    
+                    // Show confirmation message
+                    showSuccessMessage(`Route color updated to ${newColor}`);
+                });
+            }
+        }, 500);
+    });
+</script>
+
+<!-- CSRF Token for AJAX requests -->
+{% csrf_token %}
+{% endblock %}

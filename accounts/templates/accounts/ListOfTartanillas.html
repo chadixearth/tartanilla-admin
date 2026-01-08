@@ -1,0 +1,509 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tartanilla Carriages</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css">
+</head>
+
+<!-- PAGE: fixed height, no scroll -->
+<body class="h-screen overflow-hidden p-0 md:p-4 ml-5 bg-gray-50"
+      data-owner-specific="{{ is_owner_specific }}"
+      data-owner-id="{{ owner.id|default:'' }}"
+      data-owner-name="{{ owner.name|default:'' }}">
+
+  <!-- Sidebar -->
+  {% include 'base.html' %}
+
+  <!-- WRAPPER: fills the viewport, allows children to shrink -->
+  <div class="flex flex-col md:ml-64 p-4 md:p-6 h-full min-h-0">
+
+    <!-- CARD: fills wrapper height, no scroll on container -->
+    <div class="bg-white rounded-none md:rounded-2xl shadow p-4 md:p-6 border border-[#531B24] w-full
+                h-full min-h-0 flex flex-col">
+
+      <!-- Header -->
+      <div class="mb-4">
+        <div class="flex justify-between items-center mb-3">
+          <div>
+            {% if is_owner_specific and owner %}
+              <div class="flex items-center gap-4">
+                <a href="{% url 'accounts:listOfOwners' %}" class="text-[#531B24] hover:text-[#6A2931]">
+                  <i class="fas fa-arrow-left mr-2"></i>Back to Owners
+                </a>
+                <h2 class="text-2xl font-semibold">Owner's Tartanilla Carriages - {{ owner.name }}</h2>
+              </div>
+              <p class="text-sm text-[#531B24] mt-1">{{ owner.email }} • {{ carriages|length }} carriage{{ carriages|length|pluralize }} • View Only</p>
+            {% else %}
+              <h2 class="text-2xl font-semibold">Tartanilla Carriages</h2>
+            {% endif %}
+          </div>
+          <!-- Export PDF aligned like Add New Package -->
+          <a href="{% url 'accounts:export_tartanillas_pdf' %}"
+             class="bg-[#7B2D36] text-md text-white px-3 py-1 rounded-xl shadow hover:bg-[#531B24] transition-all duration-200">
+            Export PDF
+          </a>
+        </div>
+
+        <!-- Top Controls (Search left, Filters right) -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <!-- Search -->
+          <div class="relative w-full sm:w-1/3">
+            <input type="text" id="searchInput" placeholder="Search"
+              class="pl-10 pr-4 py-2 w-full h-8 rounded-xl border border-[#531B24] focus:outline-none focus:ring-1 focus:ring-[#531B24]">
+            <i class="fas fa-search absolute left-3 top-2.5 text-[#531B24]"></i>
+          </div>
+
+          <!-- Filters grouped -->
+          <div class="flex flex-row gap-2">
+            <!-- Status Filter styled like chip -->
+            <div class="flex items-center pl-3 pr-3 w-fit h-8 rounded-xl border border-[#531B24] text-gray-700 focus-within:ring-1 focus-within:ring-[#6A2931]">
+              <span class="mr-2 whitespace-nowrap text-sm">Status:</span>
+              <select id="statusFilter" class="bg-transparent text-sm pr-6 focus:outline-none text-gray-700">
+                <option value="">All Status</option>
+                <option value="available">Available</option>
+                <option value="under_maintenance">Under Maintenance</option>
+                <option value="in_use">In Use</option>
+                <option value="unavailable">Unavailable</option>
+              </select>
+            </div>
+
+            <!-- Eligibility Filter styled like chip -->
+            <div class="flex items-center pl-3 pr-3 w-fit h-8 rounded-xl border border-[#531B24] text-gray-700 focus-within:ring-1 focus-within:ring-[#6A2931]">
+              <span class="mr-2 whitespace-nowrap text-sm">Eligibility:</span>
+              <select id="eligibilityFilter" class="bg-transparent text-sm pr-6 focus:outline-none text-gray-700">
+                <option value="">All Eligibility</option>
+                <option value="eligible">Tour Eligible</option>
+                <option value="suspended">Suspended</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Carriages Table -->
+      <div class="h-[500px] rounded-xl text-sm text-center border border-gray-300 flex-1">
+        <table class="min-w-full table-fixed">
+          <thead class="h-[42px] bg-gray-100 overflow-hidden rounded-t-xl">
+            <tr class="text-[#531B24]">
+              <th class="px-2 py-2 w-[100px] rounded-tl-xl">
+                <div class="flex items-center justify-center">
+                  <span>Plate Number</span>
+                  <i class="fa-solid fa-sort ml-2"></i>
+                </div>
+              </th>
+              <th class="px-2 py-1 w-[80px]">Image</th>
+              <th class="px-2 py-1 w-[50px]">View Carriages</th>
+              <th class="px-2 py-1 w-[100px]">Status</th>
+              <th class="px-2 py-1 w-[100px]">Capacity</th>
+              <th class="px-2 py-1 w-[150px]">Owner</th>
+              <th class="px-2 py-1 w-[150px]">Cochero</th>
+              <th class="px-2 py-1 w-[120px]">Tour Eligibility</th>
+              <th class="px-2 py-1 w-[50px] rounded-tr-xl">Toggle</th>
+            </tr>
+          </thead>
+          <tbody id="carriagesTableBody" class="divide-y divide-gray-100">
+            {% for carriage in carriages %}
+            <tr class="hover:bg-gray-50" data-image="{% if carriage.img %}{{ carriage.img }}{% endif %}">
+              <td class="px-2 py-[6px]">{{ carriage.plate_number }}</td>
+              <td class="px-2 py-[6px]">
+                {% if carriage.img %}
+                  <img src="#" data-img="{{ carriage.img }}" alt="Carriage" class="w-12 h-12 object-cover rounded-md mx-auto carriage-img">
+                {% else %}
+                  <div class="w-12 h-12 bg-gray-200 rounded-md mx-auto flex items-center justify-center">
+                    <i class="fas fa-horse-head text-gray-400"></i>
+                  </div>
+                {% endif %}
+              </td>
+              <td class="px-2 py-[6px]">
+                <button onclick="viewCarriageDetails(this)" 
+                        class="text-[#531B24] hover:text-[#6A2931] hover:underline cursor-pointer">
+                  View Details
+                </button>
+              </td>
+              <td class="px-2 py-1">
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
+                  {% if carriage.status == 'available' %}bg-green-100 text-green-800
+                  {% elif carriage.status == 'in_use' %}bg-yellow-100 text-yellow-800
+                  {% elif carriage.status == 'maintenance' %}bg-orange-100 text-orange-800
+                  {% elif carriage.status == 'not_usable' %}bg-red-100 text-red-800
+                  {% else %}bg-grey-100 text-grey-800{% endif %}">
+                  {% if carriage.status == 'maintenance' %}Under Maintenance{% elif carriage.status == 'in_use' %}In Use{% elif carriage.status == 'not_usable' %}Not Usable{% else %}{{ carriage.status|title }}{% endif %}
+                </span>
+              </td>
+              <td class="px-2 py-1">{{ carriage.capacity }} persons</td>
+              <td class="px-2 py-1">
+                {% if carriage.assigned_owner %}
+                  <div class="flex flex-col">
+                    <span class="font-medium text-gray-900">{{ carriage.assigned_owner.name|default:"Unknown" }}</span>
+                    <span class="text-xs text-gray-500">{{ carriage.assigned_owner.email|default:"No email" }}</span>
+                  </div>
+                {% elif carriage.assigned_owner_id %}
+                  <div class="flex flex-col">
+                    <span class="font-medium text-gray-900">Owner ID: {{ carriage.assigned_owner_id }}</span>
+                    <span class="text-xs text-red-500">Details not loaded</span>
+                  </div>
+                {% else %}
+                  <span class="text-gray-400 italic">No Owner Assigned</span>
+                {% endif %}
+              </td>
+              <td class="px-2 py-1">
+                {% if carriage.assigned_driver %}
+                  <div class="flex flex-col">
+                    <span class="font-medium text-gray-900">{{ carriage.assigned_driver.name|default:"Unknown" }}</span>
+                    <span class="text-xs text-gray-500">{{ carriage.assigned_driver.email|default:"No email" }}</span>
+                  </div>
+                {% elif carriage.assigned_driver_id %}
+                  <div class="flex flex-col">
+                    <span class="font-medium text-gray-900">Driver ID: {{ carriage.assigned_driver_id }}</span>
+                    <span class="text-xs text-red-500">Details not loaded</span>
+                  </div>
+                {% else %}
+                  <span class="text-gray-400 italic">Unassigned</span>
+                {% endif %}
+              </td>
+              <td class="px-2 py-1">
+                <span class="px-2 py-1 rounded-full text-xs font-medium
+                  {% if carriage.eligibility == 'eligible' %}bg-green-100 text-green-800
+                  {% elif carriage.eligibility == 'suspended' %}bg-red-100 text-red-800
+                  {% else %}bg-gray-100 text-gray-800{% endif %}">
+                  {% if carriage.eligibility == 'eligible' %}
+                    <i class="fas fa-check-circle mr-1"></i>Eligible
+                  {% elif carriage.eligibility == 'suspended' %}
+                    <i class="fas fa-ban mr-1"></i>Not Eligible
+                  {% else %}
+                    {{ carriage.eligibility|title }}
+                  {% endif %}
+                </span>
+              </td>
+              <td class="px-2 py-1">
+                <div class="flex space-x-2 justify-center">
+                  {% if not is_owner_specific %}
+                  <button onclick="toggleEligibility('{{ carriage.id }}', '{{ carriage.eligibility }}')" 
+                          class="{% if carriage.eligibility == 'eligible' %}text-orange-600 hover:text-orange-800{% else %}text-green-600 hover:text-green-800{% endif %}" 
+                          title="{% if carriage.eligibility == 'eligible' %}Suspend eligibility{% else %}Enable eligibility{% endif %}">
+                    {% if carriage.eligibility == 'eligible' %}
+                      <i class="fas fa-ban"></i>
+                    {% else %}
+                      <i class="fas fa-check-circle"></i>
+                    {% endif %}
+                  </button>
+                  {% else %}
+                  <span class="text-gray-400 text-sm">View Only</span>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="9" class="px-4 py-8 text-center text-gray-500">No carriages found.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Footer with pagination -->
+      <div class="flex items-center justify-between mt-4">
+        <div class="text-sm text-gray-700">
+          Showing <span id="carriageFrom">1</span> to <span id="carriageTo">{{ carriages|length }}</span>
+          of <span id="carriageTotal">{{ carriages|length }}</span> entries
+        </div>
+        <div class="flex items-center space-x-2" id="paginationContainer">
+          <!-- Pagination buttons will be inserted here -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- View Details Modal -->
+  <div id="detailsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div class="sticky top-0 bg-gradient-to-r from-[#531B24] to-[#7B2D36] text-white px-6 py-4 rounded-t-2xl">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xl font-bold flex items-center">
+            <i class="fas fa-horse-head mr-3"></i>Carriage Details
+          </h3>
+          <button onclick="closeDetailsModal()" class="text-white hover:text-gray-200 transition-colors">
+            <i class="fas fa-times text-xl"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-6">
+        <div id="carriageImageContainer" class="mb-6"></div>
+        <div id="carriageDetails" class="space-y-4"></div>
+      </div>
+      <div class="sticky bottom-0 bg-gray-50 px-6 py-4 rounded-b-2xl border-t">
+        <button onclick="closeDetailsModal()" 
+                class="w-full px-6 py-3 bg-[#531B24] text-white rounded-xl hover:bg-[#7B2D36] transition-all duration-200 font-medium">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Global functions
+    function viewCarriageDetails(button) {
+      const row = button.closest('tr');
+      const plateNumber = row.cells[0].textContent.trim();
+      let imageUrl = row.getAttribute('data-image') || '';
+      
+      // Parse image data - handle multiple formats from mobile/web
+      if (imageUrl) {
+        console.log('Raw image data:', imageUrl);
+        
+        // Extract URL using regex - same as table images
+        if (imageUrl && imageUrl.includes('https://')) {
+          const urlMatch = imageUrl.match(/https:\/\/[^&#'"\s]+/);
+          imageUrl = urlMatch ? urlMatch[0] : '';
+        } else {
+          imageUrl = '';
+        }
+        
+        console.log('Processed image URL:', imageUrl);
+      }
+      
+      const status = row.cells[3].textContent.trim();
+      const capacity = row.cells[4].textContent.trim();
+      const owner = row.cells[5].textContent.trim();
+      const driver = row.cells[6].textContent.trim();
+      const eligibility = row.cells[7].textContent.trim();
+      const carriageData = { plateNumber, status, capacity, owner, driver, eligibility };
+
+      const imageContainer = document.getElementById('carriageImageContainer');
+      if (imageUrl && imageUrl.trim() !== '') {
+        imageContainer.innerHTML = `
+          <div class="relative rounded-xl overflow-hidden shadow-lg">
+            <img src="${imageUrl}" alt="Carriage" class="w-full h-64 object-cover">
+            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+              <p class="text-white font-bold text-lg">${carriageData.plateNumber}</p>
+            </div>
+          </div>`;
+      } else {
+        imageContainer.innerHTML = `
+          <div class="bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl h-64 flex items-center justify-center">
+            <div class="text-center">
+              <i class="fas fa-horse-head text-6xl text-gray-400 mb-3"></i>
+              <p class="text-gray-500 font-medium">No image available</p>
+            </div>
+          </div>`;
+      }
+      document.getElementById('carriageDetails').innerHTML = `
+        <div class="grid grid-cols-1 gap-4">
+          <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Plate Number</p>
+                <p class="text-base font-semibold text-gray-900">${carriageData.plateNumber}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Status</p>
+                <p class="text-base font-semibold text-gray-900">${carriageData.status}</p>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Capacity</p>
+                <p class="text-base font-semibold text-gray-900">${carriageData.capacity}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Tour Eligibility</p>
+                <p class="text-base font-semibold text-gray-900">${carriageData.eligibility}</p>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+            <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Owner Information</p>
+            <p class="text-base font-semibold text-gray-900">${carriageData.owner}</p>
+          </div>
+          <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+            <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Driver Information</p>
+            <p class="text-base font-semibold text-gray-900">${carriageData.driver}</p>
+          </div>
+        </div>`;
+      document.getElementById('detailsModal').classList.remove('hidden');
+    }
+    
+    function closeDetailsModal() { 
+      document.getElementById('detailsModal').classList.add('hidden'); 
+    }
+
+    // Initialize variables
+    const isOwnerSpecific = document.body.getAttribute('data-owner-specific') === 'true';
+    const ownerId = document.body.getAttribute('data-owner-id');
+    const ownerName = document.body.getAttribute('data-owner-name');
+
+    function toggleEligibility(carriageId, currentEligibility) {
+      const newEligibility = currentEligibility === 'eligible' ? 'suspended' : 'eligible';
+      const action = newEligibility === 'eligible' ? 'enable' : 'suspend';
+      showConfirmModal(
+        `Are you sure you want to ${action} tour package eligibility for this carriage?`,
+        () => {
+          fetch('/accounts/api/update-tartanilla-carriage/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify({ carriage_id: carriageId, eligibility: newEligibility })
+          })
+          .then(r => r.json())
+          .then(data => { data.success ? (showSuccessModal(`Carriage eligibility ${action}d successfully!`), setTimeout(() => location.reload(), 1500)) : showErrorModal('Error: ' + data.error); })
+          .catch(e => (console.error('Error:', e), showErrorModal('Error updating eligibility')));
+        }
+      );
+    }
+    function getCookie(name) {
+      let v = null;
+      if (document.cookie && document.cookie !== '') {
+        document.cookie.split(';').some(c => {
+          c = c.trim();
+          if (c.substring(0, name.length + 1) === (name + '=')) { v = decodeURIComponent(c.substring(name.length + 1)); return true; }
+        });
+      }
+      return v;
+    }
+
+    document.getElementById('searchInput').addEventListener('input', filterCarriages);
+    document.getElementById('statusFilter').addEventListener('change', filterCarriages);
+    document.getElementById('eligibilityFilter').addEventListener('change', filterCarriages);
+
+    const pageSize = 7;
+    let currentPage = 1;
+    let allRows = [];
+    let filteredRows = [];
+
+    function updateCounts(from, to, totalAll) {
+      const fromEl = document.getElementById('carriageFrom');
+      const toEl = document.getElementById('carriageTo');
+      const totalEl = document.getElementById('carriageTotal');
+      if (fromEl) fromEl.textContent = from;
+      if (toEl) toEl.textContent = to;
+      if (totalEl) totalEl.textContent = totalAll;
+    }
+
+    function updatePager() {
+      const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+      const paginationContainer = document.getElementById('paginationContainer');
+      paginationContainer.innerHTML = '';
+      
+      if (totalPages <= 1) return;
+      
+      // First page button
+      if (currentPage > 1) {
+        const firstBtn = document.createElement('button');
+        firstBtn.innerHTML = '<i class="fas fa-angle-double-left"></i>';
+        firstBtn.className = 'px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50';
+        firstBtn.onclick = () => renderPage(1);
+        paginationContainer.appendChild(firstBtn);
+        
+        const prevBtn = document.createElement('button');
+        prevBtn.innerHTML = '<i class="fas fa-angle-left"></i>';
+        prevBtn.className = 'px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50';
+        prevBtn.onclick = () => renderPage(currentPage - 1);
+        paginationContainer.appendChild(prevBtn);
+      }
+      
+      // Page number buttons
+      const startPage = Math.max(1, currentPage - 2);
+      const endPage = Math.min(totalPages, currentPage + 2);
+      
+      for (let i = startPage; i <= endPage; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.textContent = i;
+        if (i === currentPage) {
+          pageBtn.className = 'px-3 py-2 text-sm font-medium text-white bg-[#531B24] border border-[#531B24] rounded-md';
+        } else {
+          pageBtn.className = 'px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50';
+          pageBtn.onclick = () => renderPage(i);
+        }
+        paginationContainer.appendChild(pageBtn);
+      }
+      
+      // Last page button
+      if (currentPage < totalPages) {
+        const nextBtn = document.createElement('button');
+        nextBtn.innerHTML = '<i class="fas fa-angle-right"></i>';
+        nextBtn.className = 'px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50';
+        nextBtn.onclick = () => renderPage(currentPage + 1);
+        paginationContainer.appendChild(nextBtn);
+        
+        const lastBtn = document.createElement('button');
+        lastBtn.innerHTML = '<i class="fas fa-angle-double-right"></i>';
+        lastBtn.className = 'px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50';
+        lastBtn.onclick = () => renderPage(totalPages);
+        paginationContainer.appendChild(lastBtn);
+      }
+    }
+
+    function renderPage(page) {
+      currentPage = page;
+      // Hide all rows first
+      allRows.forEach(r => r.style.display = 'none');
+      const totalAll = allRows.length;
+      const start = (currentPage - 1) * pageSize;
+      const endExclusive = Math.min(start + pageSize, filteredRows.length);
+      const pageRows = filteredRows.slice(start, endExclusive);
+      pageRows.forEach(r => r.style.display = '');
+      const from = filteredRows.length ? (start + 1) : 0;
+      const to = endExclusive;
+      updateCounts(from, to, totalAll);
+      updatePager();
+    }
+
+    function filterCarriages() {
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      const statusFilter = document.getElementById('statusFilter').value;
+      const eligibilityFilter = document.getElementById('eligibilityFilter').value;
+      // Compute filtered rows without showing them yet
+      filteredRows = allRows.filter(row => {
+        if (row.cells.length < 8) return false;
+        const plateNumber = row.cells[0].textContent.toLowerCase();
+        const status = row.cells[3].textContent.toLowerCase();
+        const eligibility = row.cells[7].textContent.toLowerCase();
+        const matchesSearch = plateNumber.includes(searchTerm);
+        const matchesStatus = !statusFilter || status.includes(statusFilter.replace('_', ' '));
+        const matchesEligibility = !eligibilityFilter || eligibility.includes(eligibilityFilter);
+        return matchesSearch && matchesStatus && matchesEligibility;
+      });
+      // After filtering, render first page
+      renderPage(1);
+    }
+
+    // Initialize pagination & filters on load
+    window.addEventListener('DOMContentLoaded', () => {
+      allRows = Array.from(document.querySelectorAll('#carriagesTableBody tr'));
+      filteredRows = allRows.slice();
+      
+      // Fix table images
+      document.querySelectorAll('.carriage-img').forEach(img => {
+        const rawData = img.getAttribute('data-img');
+        if (rawData && rawData.includes('https://')) {
+          // Extract URL using regex - handles HTML entities
+          const urlMatch = rawData.match(/https:\/\/[^&#'"\s]+/);
+          if (urlMatch) {
+            img.src = urlMatch[0];
+            img.onerror = function() {
+              this.style.display = 'none';
+              this.parentElement.innerHTML = '<div class="w-12 h-12 bg-gray-200 rounded-md mx-auto flex items-center justify-center"><i class="fas fa-horse-head text-gray-400"></i></div>';
+            };
+          } else {
+            img.style.display = 'none';
+            img.parentElement.innerHTML = '<div class="w-12 h-12 bg-gray-200 rounded-md mx-auto flex items-center justify-center"><i class="fas fa-horse-head text-gray-400"></i></div>';
+          }
+        } else {
+          img.style.display = 'none';
+          img.parentElement.innerHTML = '<div class="w-12 h-12 bg-gray-200 rounded-md mx-auto flex items-center justify-center"><i class="fas fa-horse-head text-gray-400"></i></div>';
+        }
+      });
+      
+      updatePager();
+      renderPage(1);
+    });
+  </script>
+</body>
+</html>

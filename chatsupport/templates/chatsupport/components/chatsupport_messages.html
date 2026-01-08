@@ -1,0 +1,241 @@
+{% load static %}
+<div class="flex flex-col w-full h-full bg-white border-l border-gray-200">
+    <!-- Chat Header -->
+    <div class="chat-header flex items-center p-4 border-b border-gray-200">
+        <img src="/static/img/TarTrack Logo_sakto.png" alt="User Profile" class="w-10 h-10 rounded-full mr-3 object-cover">
+        <div class="flex-1">
+            <h2 class="text-lg font-semibold text-[#561c24]">Select a conversation</h2>
+            <p class="text-sm text-gray-600"></p>
+        </div>
+        <div class="flex items-center space-x-2">
+            <!-- Auto-Translate Indicator -->
+            <span class="text-sm text-gray-700">Auto-translation to English is ON</span>
+            <button class="p-2 rounded-full hover:bg-gray-100">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Messages Container -->
+    <div id="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-4">
+        <div class="flex flex-col items-center justify-center h-full text-center">
+            <svg class="w-16 h-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" 
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">Select a conversation</h3>
+            <p class="mt-1 text-sm text-gray-500">Choose a conversation from the list or start a new one.</p>
+        </div>
+    </div>
+
+    <!-- Message Input -->
+    <form id="messageForm" class="border-t border-gray-200 p-4 opacity-50 pointer-events-none">
+        <div class="flex items-end space-x-2">
+            <button type="button" id="fileUploadButton" class="p-2 rounded-full hover:bg-gray-100">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                </svg>
+            </button>
+            <input type="file" id="fileUpload" class="hidden" />
+            <textarea id="messageInput" disabled placeholder="Type a message..." class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#561c24] resize-none" rows="1"></textarea>
+            <button id="sendMessageButton" type="submit" disabled class="p-2 bg-[#561c24] text-white rounded-full hover:bg-[#471118] focus:outline-none focus:ring-2 focus:ring-[#561c24] prevent-multiple-clicks" data-prevent-multiple>
+                <span class="btn-text">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                </span>
+                <span class="btn-loading hidden">
+                    <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </span>
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+// Config: optional proxy endpoint to avoid exposing secrets in-browser.
+// If not set, will use the public web Translate endpoint (no key) similar to mobile.
+// Define window.TRANSLATE_API_URL to a safe proxy if desired.
+
+(function() {
+    const messagesContainer = document.getElementById('messagesContainer');
+    const TARGET_LANG = 'en';
+
+    // Utility: find message text nodes. Adjust selectors to your actual DOM.
+    function getMessageTextNodes() {
+        const nodes = [];
+        // Prefer elements marked with .message-text
+        messagesContainer.querySelectorAll('.message-text').forEach(el => nodes.push(el));
+        if (nodes.length === 0) {
+            // Fallback: generic bubbles that may contain text
+            messagesContainer.querySelectorAll('.message, .bubble, .chat-message').forEach(el => nodes.push(el));
+        }
+        // As last resort, use all paragraphs/spans inside messagesContainer
+        if (nodes.length === 0) {
+            messagesContainer.querySelectorAll('p, span, div').forEach(el => {
+                // Heuristic: skip containers with children that are not simple text
+                if (el.children.length === 0 && el.textContent.trim().length > 0) nodes.push(el);
+            });
+        }
+        return nodes;
+    }
+
+    // Add an original text cache per node to allow toggling off
+    function ensureOriginalCache(el) {
+        if (!el.dataset.originalText) {
+            el.dataset.originalText = el.textContent;
+        }
+    }
+
+    async function translateTexts(texts, targetLang, sourceLang = 'auto') {
+        // If proxy endpoint provided, use it
+        if (window.TRANSLATE_API_URL) {
+            const res = await fetch(window.TRANSLATE_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ q: texts, targetLang, sourceLang })
+            });
+            if (!res.ok) {
+                const msg = await res.text();
+                throw new Error('Translate request failed: ' + msg);
+            }
+            const data = await res.json();
+            if (!data || !Array.isArray(data.translations)) {
+                throw new Error('Unexpected translate response format');
+            }
+            return data.translations.map(t => t.text);
+        }
+        // Otherwise use public Google Translate web endpoint (no API key), similar to mobile code
+        // NOTE: This endpoint is unofficial and may change.
+        const q = texts.join('\n');
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sourceLang)}&tl=${encodeURIComponent(targetLang)}&dt=t&q=${encodeURIComponent(q)}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+            throw new Error('Google Translate web API error: ' + res.status);
+        }
+        const data = await res.json();
+        // data[0] is an array of segments [[translated, original, ...], ...]
+        if (!Array.isArray(data) || !Array.isArray(data[0])) {
+            throw new Error('Unexpected response format');
+        }
+        // Split by newlines to map back to original texts
+        const translatedJoined = data[0].map(part => part[0]).join('');
+        const translatedParts = translatedJoined.split('\n');
+        // Ensure lengths match; if not, fall back to per-line best-effort
+        if (translatedParts.length === texts.length) {
+            return translatedParts;
+        }
+        // Best-effort: translate each text individually
+        const perTextPromises = texts.map(async t => {
+            const u = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sourceLang)}&tl=${encodeURIComponent(targetLang)}&dt=t&q=${encodeURIComponent(t)}`;
+            const r = await fetch(u);
+            if (!r.ok) return t;
+            const d = await r.json();
+            return (Array.isArray(d) && Array.isArray(d[0]) && Array.isArray(d[0][0]) && d[0][0][0]) ? d[0][0][0] : t;
+        });
+        return Promise.all(perTextPromises);
+    }
+
+    async function applyTranslation(targetLang) {
+        const nodes = getMessageTextNodes();
+        if (nodes.length === 0) return;
+
+        // Cache originals and build payload
+        const originals = nodes.map(el => {
+            ensureOriginalCache(el);
+            return el.dataset.originalText;
+        });
+
+        // Show loading state
+        nodes.forEach(el => el.classList.add('opacity-70'));
+
+        try {
+            const translated = await translateTexts(originals, targetLang);
+            translated.forEach((t, i) => {
+                const originalEl = nodes[i];
+                originalEl.classList.remove('opacity-70');
+                originalEl.dataset.translated = '1';
+                originalEl.dataset.targetLang = targetLang;
+
+                // Do not replace original text; append a translated line below
+                let translatedEl = originalEl.nextElementSibling;
+                const isExistingTranslated = translatedEl && translatedEl.classList && translatedEl.classList.contains('translated-text');
+                if (!isExistingTranslated) {
+                    translatedEl = document.createElement('div');
+                    translatedEl.className = 'translated-text text-sm text-green-600 italic mt-1';
+                    // Insert directly after the original text node within the same bubble/container
+                    originalEl.parentNode.insertBefore(translatedEl, originalEl.nextSibling);
+                }
+                translatedEl.textContent = t;
+            });
+        } catch (err) {
+            console.error(err);
+            nodes.forEach(el => el.classList.remove('opacity-70'));
+            alert('Translation unavailable: ' + err.message);
+        }
+    }
+
+    function restoreOriginal() {
+        const nodes = getMessageTextNodes();
+        nodes.forEach(el => {
+            if (el.dataset.originalText) {
+                el.textContent = el.dataset.originalText;
+                // Remove appended translated element if present
+                const next = el.nextElementSibling;
+                if (next && next.classList && next.classList.contains('translated-text')) {
+                    next.remove();
+                }
+                el.dataset.translated = '';
+                el.dataset.targetLang = '';
+            }
+        });
+    }
+
+    // Initial translate on load
+    document.addEventListener('DOMContentLoaded', () => {
+        applyTranslation(TARGET_LANG);
+    });
+
+    // Optional: observe new messages and auto-translate when a target language is selected
+    const observer = new MutationObserver((mutations) => {
+        // Only translate newly added nodes
+        const addedTextEls = [];
+        mutations.forEach(m => {
+            m.addedNodes.forEach(node => {
+                if (!(node instanceof HTMLElement)) return;
+                // Collect any text-bearing elements under the added node
+                node.querySelectorAll('.message-text, .message, .bubble, .chat-message, p, span, div').forEach(el => {
+                    if (el.children.length === 0 && el.textContent.trim().length > 0) addedTextEls.push(el);
+                });
+            });
+        });
+        if (addedTextEls.length === 0) return;
+        // Cache originals
+        const originals = addedTextEls.map(el => {
+            ensureOriginalCache(el);
+            return el.dataset.originalText;
+        });
+        translateTexts(originals, TARGET_LANG).then(translated => {
+            translated.forEach((t, i) => {
+                const originalEl = addedTextEls[i];
+                originalEl.dataset.translated = '1';
+                originalEl.dataset.targetLang = TARGET_LANG;
+                let translatedEl = originalEl.nextElementSibling;
+                const isExistingTranslated = translatedEl && translatedEl.classList && translatedEl.classList.contains('translated-text');
+                if (!isExistingTranslated) {
+                    translatedEl = document.createElement('div');
+                    translatedEl.className = 'translated-text text-sm text-green-600 italic mt-1';
+                    originalEl.parentNode.insertBefore(translatedEl, originalEl.nextSibling);
+                }
+                translatedEl.textContent = t;
+            });
+        }).catch(err => console.warn('Auto-translate failed:', err));
+    });
+    observer.observe(messagesContainer, { childList: true, subtree: true });
+})();
+</script>

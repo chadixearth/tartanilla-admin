@@ -1,0 +1,854 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Tour Packages - TarTrack{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css">
+<style>
+    .animate-fade-in {
+        animation: fadeIn 0.3s ease-in-out;
+    }
+    
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .transition-opacity {
+        transition: opacity 0.5s ease-in-out;
+    }
+    
+    .line-clamp-1 {
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .line-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+    
+    <!-- Debug info -->
+    <!-- <script>
+        console.log('CSRF Token:', document.querySelector('[name=csrfmiddlewaretoken]')?.value);
+        console.log('Tourpackages from server:', {{ tourpackages|length|default:0 }});
+        {% if error %}
+        console.log('Error from server:', '{{ error }}');
+        {% endif %}
+    </script> -->
+
+    <div class="h-screen overflow-hidden p-4 md:p-6">
+        <div class="flex flex-col h-full min-h-0">
+      
+          <!-- Success Message -->
+          {% if success_message %}
+          <div id="floatingSuccess"
+            class="fixed top-6 right-6 z-50 bg-green-100 border border-green-400 text-green-700 px-6 py-4 rounded-xl shadow-md flex items-center space-x-3 animate-fade-in">
+            <i class="fas fa-check-circle text-green-600 text-lg"></i>
+            <div>
+              <strong class="block font-semibold">Success!</strong>
+              <span>{{ success_message }}</span>
+            </div>
+          </div>
+          {% endif %}
+      
+          <!-- Card -->
+          <div class="bg-white rounded-none md:rounded-2xl shadow p-4 md:p-6 border border-[#531B24] w-full overflow-hidden flex flex-col h-full min-h-0">
+            
+            <!-- Header -->
+            <div class="mb-6">
+              <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div>
+                  <h1 class="text-2xl font-bold text-[#561c24]">Tour Packages</h1>
+                  <p class="text-sm text-[#6d2932]/70 mt-1">Manage tour packages and offerings</p>
+                </div>
+                <a href="{% url 'tourpackage:create_package' %}"
+                  class="bg-[#7B2D36] text-md text-white px-4 py-2 rounded-xl shadow hover:bg-[#531B24] transition-all duration-200 w-fit">
+                  <i class="fas fa-plus mr-2"></i>Add New Package
+                </a>
+              </div>
+            </div>
+      
+            <!-- Top Controls -->
+            <div class="flex flex-col sm:flex-row sm:justify-between gap-2 mb-6">
+              <div class="relative">
+                <input type="text" placeholder="Search packages"
+                  class="pl-10 pr-4 py-3 w-94 h-8 rounded-xl border border-[#531B24] focus:outline-none focus:ring-1 focus:ring-[#531B24]" style="width: 500px;">
+                <i class="fas fa-search absolute left-3 top-2.5 text-[#531B24]"></i>
+              </div>
+              <div class="flex gap-2">
+                <select class="pl-3 pr-8 h-8 rounded-xl border border-[#531B24] text-gray-700 focus:outline-none focus:ring-1 focus:ring-[#6A2931]">
+                  <option>Newest First</option>
+                  <option>Oldest First</option>
+                </select>
+                <select id="expirationFilter"
+                  class="pl-3 pr-8 h-8 rounded-xl border border-[#531B24] text-gray-700 focus:outline-none focus:ring-1 focus:ring-[#531B24]"
+                  onchange="filterPackages()">
+                  <option value="all" {% if current_filter == 'all' %}selected{% endif %}>All Packages</option>
+                  <option value="active" {% if current_filter == 'active' %}selected{% endif %}>Active Only</option>
+                  <option value="expired" {% if current_filter == 'expired' %}selected{% endif %}>Expired Only</option>
+                  <option value="no-expiration" {% if current_filter == 'no-expiration' %}selected{% endif %}>No Expiration</option>
+                </select>
+              </div>
+            </div>
+      
+            <!-- Tour Packages Grid -->
+            <div class="flex-1 min-h-0 overflow-y-auto">
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-6">
+              {% for package in tourpackages %}
+              <div class="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 group overflow-hidden" data-package-id="{{ package.id }}">
+                <!-- Package Image -->
+                <div class="relative h-40 bg-gray-50 overflow-hidden">
+                  {% if package.photos and package.photos.0 %}
+                    {% if package.photos|length > 1 %}
+                      <div class="relative w-full h-full">
+                        <div class="card-slider flex transition-transform duration-300 ease-in-out h-full" data-package-id="{{ package.id }}">
+                          {% for photo in package.photos %}
+                            <img src="{{ photo.url }}" alt="{{ package.package_name }}" class="w-full h-full object-cover flex-shrink-0">
+                          {% endfor %}
+                        </div>
+                        <button onclick="slideCardPhoto('{{ package.id }}', -1)" class="absolute left-2 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100">
+                          <i class="fas fa-chevron-left text-xs"></i>
+                        </button>
+                        <button onclick="slideCardPhoto('{{ package.id }}', 1)" class="absolute right-2 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100">
+                          <i class="fas fa-chevron-right text-xs"></i>
+                        </button>
+                        <div class="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
+                          {% for photo in package.photos %}
+                            <div class="w-1.5 h-1.5 rounded-full bg-white/50 card-dot {% if forloop.first %}bg-white{% endif %}" data-package-id="{{ package.id }}" data-index="{{ forloop.counter0 }}"></div>
+                          {% endfor %}
+                        </div>
+                      </div>
+                    {% else %}
+                      <img src="{{ package.photos.0.url }}" alt="{{ package.package_name }}" class="w-full h-full object-cover">
+                    {% endif %}
+                  {% else %}
+                    <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-400 to-blue-600">
+                      <i class="fas fa-image text-white text-4xl opacity-50"></i>
+                    </div>
+                  {% endif %}
+                  
+                  <!-- Status Toggle -->
+                  <div class="absolute top-3 right-3">
+                    <button onclick="togglePackageStatus('{{ package.id }}', '{% if package.is_active %}true{% else %}false{% endif %}')"
+                            class="w-12 h-6 rounded-full transition-colors duration-200 {% if package.is_active %}bg-green-500{% else %}bg-gray-400{% endif %} relative">
+                      <div class="w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 {% if package.is_active %}translate-x-6{% else %}translate-x-0.5{% endif %} absolute top-0.5"></div>
+                    </button>
+                  </div>
+                </div>
+                
+                <!-- Package Content -->
+                <div class="p-4">
+                  <!-- Package Name -->
+                  <h3 class="font-medium text-base text-gray-900 mb-2 line-clamp-1">{{ package.package_name|default:"Untitled Package" }}</h3>
+                  
+                  <!-- Description -->
+                  <p class="text-gray-500 text-xs mb-3 line-clamp-2 leading-relaxed">{{ package.description|default:"No description available" }}</p>
+                  
+                  <!-- Price and Duration -->
+                  <div class="flex justify-between items-center mb-3">
+                    <span class="text-xl font-bold text-[#7B2D36]">₱{{ package.price|default:"0" }}</span>
+                    <span class="text-sm text-gray-500">
+                      {% if package.duration_hours or package.duration_minutes %}
+                        {% if package.duration_hours %}{{ package.duration_hours }}h{% endif %}{% if package.duration_minutes %} {{ package.duration_minutes }}m{% endif %}
+                      {% else %}
+                        Duration varies
+                      {% endif %}
+                    </span>
+                  </div>
+                  
+                  <!-- Reviews -->
+                  <div class="flex items-center mb-3">
+                    {% if package.review_count and package.review_count > 0 %}
+                      <div class="flex items-center">
+                        <span class="text-yellow-400 mr-1">★</span>
+                        <span class="text-sm font-medium">{{ package.average_rating|floatformat:1 }}</span>
+                        <span class="text-sm text-gray-500 ml-1">({{ package.review_count }})</span>
+                      </div>
+                    {% else %}
+                      <span class="text-sm text-gray-400">No reviews yet</span>
+                    {% endif %}
+                  </div>
+                  
+                  <!-- Action Buttons -->
+                  <div class="flex justify-between items-center pt-3 border-t border-gray-100">
+                    <button onclick="viewPackageDetails('{{ package.id }}')"
+                            class="text-[#7B2D36] hover:text-[#531B24] transition-colors" title="View Details">
+                      <i class="fas fa-eye text-lg"></i>
+                    </button>
+                    <a href="{% url 'tourpackage:edit_package' package.id %}"
+                       class="text-[#7B2D36] hover:text-[#531B24] transition-colors" title="Edit">
+                      <i class="fas fa-edit text-lg"></i>
+                    </a>
+                  </div>
+                </div>
+              </div>
+                {% empty %}
+                <div class="col-span-full text-center py-12">
+                  <i class="fas fa-box-open text-gray-300 text-6xl mb-4"></i>
+                  <p class="text-gray-500 text-lg">No packages found.</p>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+      
+            <!-- Pagination -->
+            <div class="flex items-center justify-between mt-6">
+              <div class="text-sm text-gray-700">
+                <span>Showing {{ showing_start }} to {{ showing_end }} of {{ total_items }} entries</span>
+              </div>
+              <div class="flex items-center space-x-2">
+                {% if has_previous %}
+                <a href="?page={{ previous_page }}{% if current_filter != 'all' %}&filter={{ current_filter }}{% endif %}" 
+                   class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50">&lsaquo;</a>
+                {% endif %}
+                
+                {% for p in page_range %}
+                  {% if p == current_page %}
+                  <span class="px-3 py-2 text-sm font-medium text-white bg-[#531B24] border border-[#531B24] rounded-md">{{ p }}</span>
+                  {% else %}
+                  <a href="?page={{ p }}{% if current_filter != 'all' %}&filter={{ current_filter }}{% endif %}" 
+                     class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50">{{ p }}</a>
+                  {% endif %}
+                {% endfor %}
+                
+                {% if has_next %}
+                <a href="?page={{ next_page }}{% if current_filter != 'all' %}&filter={{ current_filter }}{% endif %}" 
+                   class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50">&rsaquo;</a>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+        
+    <!-- Package Details Modal -->
+    <div id="packageDetailsModal" class="fixed inset-0 z-[9999] hidden items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-6xl rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden ml-64">
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-r from-[#7B2D36] to-[#531B24] px-8 py-6">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                            <i class="fas fa-route text-white text-lg"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-white">Tour Package Details</h3>
+                    </div>
+                    <button onclick="closePackageDetails()" class="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-all duration-200">
+                        <i class="fas fa-times text-sm"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Modal Content -->
+            <div class="p-8 overflow-y-auto max-h-[calc(90vh-120px)]">
+                <div id="packageDetailsContent">
+                    <!-- Content will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmationModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-40">
+        <div class="bg-white w-full max-w-sm p-6 rounded-lg shadow-lg">
+            <h3 id="confirmationTitle" class="text-lg font-semibold text-gray-800 mb-4">Confirm Action</h3>
+            <p id="confirmationMessage" class="text-sm text-gray-600 mb-6">Are you sure you want to perform this action?</p>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeConfirmationModal()" class="px-4 py-2 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-100 transition">Cancel</button>
+                <button id="confirmActionBtn" onclick="executeConfirmedAction()" class="px-4 py-2 bg-red-600 text-white rounded-full hover:bg-red-500 transition">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentAction = null;
+        let currentPackageId = null;
+        let currentStatus = null;
+        let currentPhotoIndex = 0;
+        let totalPhotos = 0;
+
+        function slidePhoto(direction) {
+            const slider = document.getElementById('photoSlider');
+            if (!slider) return;
+            
+            currentPhotoIndex += direction;
+            
+            if (currentPhotoIndex < 0) {
+                currentPhotoIndex = totalPhotos - 1;
+            } else if (currentPhotoIndex >= totalPhotos) {
+                currentPhotoIndex = 0;
+            }
+            
+            slider.style.transform = `translateX(-${currentPhotoIndex * 100}%)`;
+            
+            // Update dots
+            document.querySelectorAll('.photo-dot').forEach((dot, index) => {
+                dot.classList.toggle('bg-white', index === currentPhotoIndex);
+                dot.classList.toggle('bg-white/50', index !== currentPhotoIndex);
+            });
+        }
+
+        // Card photo slider functionality
+        const cardPhotoIndexes = {};
+        
+        function slideCardPhoto(packageId, direction) {
+            const slider = document.querySelector(`[data-package-id="${packageId}"].card-slider`);
+            if (!slider) return;
+            
+            const photos = slider.children;
+            const totalCardPhotos = photos.length;
+            
+            if (!cardPhotoIndexes[packageId]) {
+                cardPhotoIndexes[packageId] = 0;
+            }
+            
+            cardPhotoIndexes[packageId] += direction;
+            
+            if (cardPhotoIndexes[packageId] < 0) {
+                cardPhotoIndexes[packageId] = totalCardPhotos - 1;
+            } else if (cardPhotoIndexes[packageId] >= totalCardPhotos) {
+                cardPhotoIndexes[packageId] = 0;
+            }
+            
+            slider.style.transform = `translateX(-${cardPhotoIndexes[packageId] * 100}%)`;
+            
+            // Update dots for this specific card
+            document.querySelectorAll(`[data-package-id="${packageId}"].card-dot`).forEach((dot, index) => {
+                dot.classList.toggle('bg-white', index === cardPhotoIndexes[packageId]);
+                dot.classList.toggle('bg-white/50', index !== cardPhotoIndexes[packageId]);
+            });
+        }
+
+
+
+        function viewPackageDetails(packageId) {
+            console.log('Viewing package details for ID:', packageId);
+            
+            // Use the tourpackage API endpoint instead of the main API endpoint
+            fetch(`/api/tourpackage/${packageId}/`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                }
+            })
+                .then(response => {
+                    console.log('Package details response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        const package = data.data;
+                        const content = `
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <!-- Left: Package Info -->
+                                <div class="space-y-4">
+                                    <h6 class="font-semibold text-lg text-gray-800 border-b pb-2">Package Info</h6>
+                                    <div>
+                                        <label class="text-xs font-medium text-gray-500">Name</label>
+                                        <div class="text-base font-semibold text-gray-900">${package.package_name || ''}</div>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-medium text-gray-500">Description</label>
+                                        <div class="text-sm text-gray-700">${package.description || ''}</div>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="text-xs font-medium text-gray-500">Price</label>
+                                            <div class="text-xl font-bold text-[#7B2D36]">₱${package.price || 0}</div>
+                                            <div class="text-xs text-gray-500">${package.price_type || 'per person'}</div>
+                                        </div>
+                                        <div>
+                                            <label class="text-xs font-medium text-gray-500">Max Pax</label>
+                                            <div class="text-xl font-bold text-gray-900">${package.max_pax || 0}</div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-medium text-gray-500">Duration</label>
+                                        <div class="text-base font-semibold text-gray-900">${package.duration_hours || 0}h ${package.duration_minutes || 0}m</div>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-medium text-gray-500">Status</label>
+                                        <span class="inline-block px-3 py-1 rounded-full text-xs font-medium ${package.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                            ${package.is_active ? 'Active' : 'Inactive'}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Right: Itinerary -->
+                                <div class="lg:col-span-2">
+                                    <h6 class="font-semibold text-lg text-gray-800 border-b pb-2 mb-4">Tour Itinerary</h6>
+                                    <div id="itinerarySteps" class="space-y-3"></div>
+                                </div>
+                            </div>
+                        `;
+                        document.getElementById('packageDetailsContent').innerHTML = content;
+                        document.getElementById('packageDetailsModal').classList.remove('hidden');
+                        document.getElementById('packageDetailsModal').classList.add('flex');
+                        
+                        // Load and display itinerary
+                        fetch(`/api/tourpackage/${packageId}/get_itinerary/`)
+                            .then(r => r.json())
+                            .then(data => {
+                                if (data.success && data.data && data.data.length > 0) {
+                                    const itineraryHtml = data.data.map(step => {
+                                        let images = [];
+                                        if (step.image_urls && Array.isArray(step.image_urls) && step.image_urls.length > 0) {
+                                            images = step.image_urls;
+                                        } else if (step.image_url) {
+                                            images = [step.image_url];
+                                        }
+                                        
+                                        const typeColors = {
+                                            pickup: 'border-l-green-500 bg-green-50',
+                                            stop: 'border-l-blue-500 bg-blue-50',
+                                            dropoff: 'border-l-red-500 bg-red-50'
+                                        };
+                                        
+                                        const typeIcons = {
+                                            pickup: 'fa-map-marker-alt text-green-600',
+                                            stop: 'fa-map-pin text-blue-600',
+                                            dropoff: 'fa-flag-checkered text-red-600'
+                                        };
+                                        
+                                        return `
+                                            <div class="border-l-4 ${typeColors[step.location_type] || 'border-l-gray-500 bg-gray-50'} p-4 rounded-lg shadow-sm">
+                                                <div class="flex gap-4">
+                                                    ${images.length > 0 ? `
+                                                        <div class="flex-shrink-0">
+                                                            ${images.length === 1 ? `
+                                                                <img src="${images[0]}" class="w-32 h-32 object-cover rounded-lg" onerror="this.style.display='none'">
+                                                            ` : `
+                                                                <div class="flex gap-2 overflow-x-auto w-36" style="scrollbar-width: thin;">
+                                                                    ${images.map(img => `<img src="${img}" class="w-28 h-28 object-cover rounded-lg flex-shrink-0" onerror="this.style.display='none'">`).join('')}
+                                                                </div>
+                                                            `}
+                                                        </div>
+                                                    ` : ''}
+                                                    <div class="flex-1">
+                                                        <div class="flex items-center gap-2 mb-2">
+                                                            <i class="fas ${typeIcons[step.location_type] || 'fa-circle text-gray-600'}"></i>
+                                                            <div class="font-bold text-base text-gray-900">${step.step_order}. ${step.location_name}</div>
+                                                        </div>
+                                                        <div class="inline-block px-2 py-1 rounded text-xs font-medium uppercase ${step.location_type === 'pickup' ? 'bg-green-100 text-green-800' : step.location_type === 'dropoff' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}">
+                                                            ${step.location_type}
+                                                        </div>
+                                                        ${step.duration_hours > 0 || step.duration_minutes > 0 ? `
+                                                            <div class="flex items-center gap-1 text-sm text-gray-600 mt-2">
+                                                                <i class="far fa-clock"></i>
+                                                                <span>${step.duration_hours}h ${step.duration_minutes}m</span>
+                                                            </div>
+                                                        ` : ''}
+                                                        ${step.description ? `<div class="text-sm text-gray-700 mt-2">${step.description}</div>` : ''}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('');
+                                    document.getElementById('itinerarySteps').innerHTML = itineraryHtml;
+                                } else {
+                                    document.getElementById('itinerarySteps').innerHTML = '<div class="text-gray-500 text-sm">No itinerary available</div>';
+                                }
+                            })
+                            .catch(err => {
+                                console.error('Error fetching itinerary:', err);
+                                document.getElementById('itinerarySteps').innerHTML = '<div class="text-gray-500 text-sm">No itinerary available</div>';
+                            });
+                    } else {
+                        alert('Error loading package details: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error loading package details');
+                });
+        }
+
+        function closePackageDetails() {
+            document.getElementById('packageDetailsModal').classList.add('hidden');
+            document.getElementById('packageDetailsModal').classList.remove('flex');
+        }
+
+        function togglePackageStatus(packageId, status) {
+            currentAction = 'toggle';
+            currentPackageId = packageId;
+            // Convert status to boolean properly - handle string 'true'/'false' and boolean values
+            if (typeof status === 'string') {
+                currentStatus = status.toLowerCase() === 'true';
+            } else {
+                currentStatus = Boolean(status);
+            }
+            const isActive = currentStatus;
+            const action = isActive ? 'deactivate' : 'activate';
+            
+            console.log('Toggle status called:', packageId, 'current status:', status, 'converted to:', currentStatus);
+            console.log('Current action:', currentAction, 'Package ID:', currentPackageId, 'Current status:', currentStatus);
+            
+            document.getElementById('confirmationTitle').textContent = `${action.charAt(0).toUpperCase() + action.slice(1)} Package`;
+            document.getElementById('confirmationMessage').textContent = `Are you sure you want to ${action} this tour package?`;
+            document.getElementById('confirmActionBtn').textContent = action.charAt(0).toUpperCase() + action.slice(1);
+            document.getElementById('confirmActionBtn').className = isActive ? 
+                'px-4 py-2 bg-red-600 text-white rounded-full hover:bg-red-500 transition' : 
+                'px-4 py-2 bg-green-600 text-white rounded-full hover:bg-green-500 transition';
+            
+            document.getElementById('confirmationModal').classList.remove('hidden');
+            document.getElementById('confirmationModal').classList.add('flex');
+        }
+
+        function deletePackage(packageId) {
+            currentAction = 'delete';
+            currentPackageId = packageId;
+            
+            document.getElementById('confirmationTitle').textContent = 'Delete Package';
+            document.getElementById('confirmationMessage').textContent = 'Are you sure you want to delete this tour package? This action cannot be undone.';
+            document.getElementById('confirmActionBtn').textContent = 'Delete';
+            document.getElementById('confirmActionBtn').className = 'px-4 py-2 bg-red-600 text-white rounded-full hover:bg-red-500 transition';
+            
+            document.getElementById('confirmationModal').classList.remove('hidden');
+            document.getElementById('confirmationModal').classList.add('flex');
+        }
+
+        function closeConfirmationModal() {
+            document.getElementById('confirmationModal').classList.add('hidden');
+            document.getElementById('confirmationModal').classList.remove('flex');
+            currentAction = null;
+            currentPackageId = null;
+            currentStatus = null;
+        }
+
+        function executeConfirmedAction() {
+            console.log('executeConfirmedAction called with:', {
+                currentAction: currentAction,
+                currentPackageId: currentPackageId,
+                currentStatus: currentStatus
+            });
+            
+            if (!currentAction || !currentPackageId) {
+                console.error('Missing required data for action');
+                alert('Missing required data for action');
+                return;
+            }
+
+            if (currentAction === 'toggle') {
+                // Toggle package status - use the dedicated toggle endpoint
+                const url = `/api/tourpackage/${currentPackageId}/toggle_status/`;
+                
+                console.log('Toggling package status:', {
+                    url: url,
+                    method: 'POST',
+                    packageId: currentPackageId,
+                    currentStatus: currentStatus
+                });
+                
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                    }
+                })
+                .then(response => {
+                    console.log('Toggle response status:', response.status);
+                    console.log('Toggle response ok:', response.ok);
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            console.error('Toggle response error text:', text);
+                            throw new Error(`HTTP ${response.status}: ${response.statusText} - ${text}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Response data:', data);
+                    if (data.success) {
+                        console.log('Success! Updating UI...');
+                        // Update the specific card instead of reloading the page
+                        updatePackageRow(currentPackageId, !currentStatus);
+                        showSuccessMessage(data.message || 'Package status updated successfully!');
+                    } else {
+                        console.error('API returned error:', data.error);
+                        alert('Error updating package: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Toggle fetch error:', error);
+                    console.error('Toggle error stack:', error.stack);
+                    alert('Error updating package status: ' + error.message);
+                });
+            } else if (currentAction === 'delete') {
+                // Delete package - use the tourpackage API endpoint
+                const url = `/api/tourpackage/${currentPackageId}/`;
+                console.log('Deleting package:', {
+                    url: url,
+                    method: 'DELETE',
+                    packageId: currentPackageId
+                });
+                
+                fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                    }
+                })
+                .then(response => {
+                    console.log('Delete response status:', response.status);
+                    console.log('Delete response headers:', response.headers);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Delete response data:', data);
+                    if (data.success) {
+                        console.log('Delete successful! Removing card...');
+                        // Remove the specific card instead of reloading the page
+                        removePackageRow(currentPackageId);
+                        showSuccessMessage(data.message || 'Package deleted successfully!');
+                    } else {
+                        console.error('Delete API returned error:', data.error);
+                        alert('Error deleting package: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Delete fetch error:', error);
+                    alert('Error deleting package: ' + error.message);
+                });
+            }
+
+            closeConfirmationModal();
+        }
+
+        function formatAvailableDays(availableDays) {
+            if (!availableDays) return 'N/A';
+            if (Array.isArray(availableDays)) {
+                return availableDays.map(day => day.charAt(0).toUpperCase() + day.slice(1)).join(', ');
+            }
+            return availableDays;
+        }
+
+        function formatExpirationDate(expirationDate) {
+            if (!expirationDate) return 'No expiration date';
+            
+            const date = new Date(expirationDate);
+            const today = new Date();
+            const isExpired = date < today;
+            
+            const formattedDate = date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+            
+            return `${formattedDate} ${isExpired ? '(Expired)' : '(Active)'}`;
+        }
+
+        function filterPackages() {
+            const filter = document.getElementById('expirationFilter').value;
+            const currentUrl = new URL(window.location.href);
+            
+            // Add filter parameter to URL
+            currentUrl.searchParams.set('filter', filter);
+            
+            // Reset to page 1 when filtering
+            currentUrl.searchParams.set('page', 1);
+            
+            // Navigate to the filtered URL
+            window.location.href = currentUrl.toString();
+        }
+
+        // Helper function to update a specific package card after toggle
+        function updatePackageRow(packageId, newStatus) {
+            console.log('updatePackageRow called with:', packageId, newStatus);
+            
+            const card = document.querySelector(`div[data-package-id="${packageId}"]`);
+            if (!card) {
+                console.log('Card not found for package:', packageId);
+                console.log('Available cards:', document.querySelectorAll('[data-package-id]').length);
+                // If we can't find the card, reload the page to show updated state
+                console.log('Reloading page to show updated state...');
+                window.location.reload();
+                return;
+            }
+
+            console.log('Found card, updating UI for package:', packageId, 'new status:', newStatus);
+
+            // Update the toggle button in the card
+            const toggleButton = card.querySelector('button[onclick*="togglePackageStatus"]');
+            if (toggleButton) {
+                console.log('Found toggle button, updating...');
+                
+                // Update the button's onclick attribute
+                const newOnClick = `togglePackageStatus('${packageId}', ${newStatus})`;
+                toggleButton.setAttribute('onclick', newOnClick);
+                
+                // Update the button's visual state
+                if (newStatus) {
+                    toggleButton.className = 'w-12 h-6 rounded-full transition-colors duration-200 bg-green-500 relative';
+                } else {
+                    toggleButton.className = 'w-12 h-6 rounded-full transition-colors duration-200 bg-gray-400 relative';
+                }
+                
+                // Update the toggle slider position
+                const slider = toggleButton.querySelector('div');
+                if (slider) {
+                    if (newStatus) {
+                        slider.className = 'w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 translate-x-6 absolute top-0.5';
+                    } else {
+                        slider.className = 'w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 translate-x-0.5 absolute top-0.5';
+                    }
+                }
+                
+                console.log('Successfully updated toggle button for package:', packageId);
+            } else {
+                console.log('Toggle button not found for package:', packageId);
+                console.log('Card HTML:', card.innerHTML.substring(0, 200) + '...');
+            }
+        }
+
+        // Helper function to remove a package card after deletion
+        function removePackageRow(packageId) {
+            const card = document.querySelector(`div[data-package-id="${packageId}"]`);
+            if (card) {
+                card.remove();
+                
+                // Check if grid is empty and show message
+                const grid = document.querySelector('.grid');
+                if (grid && grid.children.length === 0) {
+                    grid.innerHTML = '<div class="col-span-full text-center py-12"><i class="fas fa-box-open text-gray-300 text-6xl mb-4"></i><p class="text-gray-500 text-lg">No packages found.</p></div>';
+                }
+            } else {
+                // If we can't find the card, reload the page
+                window.location.reload();
+            }
+        }
+
+        // Helper function to show success message
+        function showSuccessMessage(message) {
+            // Remove existing success message if any
+            const existingMessage = document.getElementById('floatingSuccess');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+
+            // Create new success message
+            const successDiv = document.createElement('div');
+            successDiv.id = 'floatingSuccess';
+            successDiv.className = 'fixed top-6 right-6 z-50 bg-green-100 border border-green-400 text-green-700 px-6 py-4 rounded-xl shadow-md flex items-center space-x-3 animate-fade-in';
+            successDiv.innerHTML = `
+                <i class="fas fa-check-circle text-green-600 text-lg"></i>
+                <div>
+                    <strong class="block font-semibold">Success!</strong>
+                    <span>${message}</span>
+                </div>
+            `;
+
+            // Add to page
+            document.body.appendChild(successDiv);
+
+            // Auto-remove after 3 seconds
+            setTimeout(() => {
+                successDiv.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+                setTimeout(() => successDiv.remove(), 500);
+            }, 3000);
+        }
+        
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const packageModal = document.getElementById('packageDetailsModal');
+            const confirmationModal = document.getElementById('confirmationModal');
+            
+            if (event.target === packageModal) {
+                closePackageDetails();
+            }
+            if (event.target === confirmationModal) {
+                closeConfirmationModal();
+            }
+        }
+
+        // Load packages from API on page load
+        function loadPackagesFromAPI() {
+            console.log('Loading packages from API...');
+            
+            // Use the main API endpoint for listing packages
+            fetch('/api/tourpackage/', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                }
+            })
+                .then(response => {
+                    console.log('Load packages response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Load packages response data:', data);
+                    if (data.success) {
+                        updatePackagesTable(data.data);
+                    } else {
+                        console.error('Error loading packages:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading packages:', error);
+                });
+        }
+
+        // Update the packages grid with API data (not used in current card layout)
+        function updatePackagesTable(packages) {
+            console.log('updatePackagesTable called but using card layout - reloading page instead');
+            // Since we're using a card layout, just reload the page to show updated data
+            window.location.reload();
+        }
+
+
+
+        // Auto-hide floating success message after 3 seconds
+        document.addEventListener('DOMContentLoaded', () => {
+            const successAlert = document.getElementById('floatingSuccess');
+            if (successAlert) {
+                setTimeout(() => {
+                    successAlert.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+                    setTimeout(() => successAlert.remove(), 500); // Remove from DOM after fade out
+                }, 3000);
+            }
+            
+
+            
+            // Load packages from API on page load if no packages are rendered from server
+            const packageCards = document.querySelectorAll('[data-package-id]');
+            if (packageCards.length === 0) {
+                console.log('No package cards found, loading from API...');
+                loadPackagesFromAPI();
+            }
+        });
+
+    </script>
+
+{% endblock %}

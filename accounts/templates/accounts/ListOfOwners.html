@@ -1,0 +1,990 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Owners</title>
+  <!-- Tailwind v2 -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css">
+
+  <style>
+    /* subtle table glow on hover */
+    .row-card:hover { box-shadow: 0 2px 18px rgba(0,0,0,.06); }
+    /* sticky header shadow when scrolling */
+    .thead-shadow::after{
+      content:"";
+      position:absolute;
+      left:0; right:0; bottom:-1px; height:1px;
+      background:linear-gradient(to right, rgba(0,0,0,.08), rgba(0,0,0,.02), rgba(0,0,0,.08));
+    }
+    /* smooth inputs */
+    input, select { transition: box-shadow .2s, border-color .2s, background-color .2s; }
+    /* status pills */
+    .pill { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium; }
+    /* custom scrollbar for modal */
+    .modal-scroll::-webkit-scrollbar { width: 6px; }
+    .modal-scroll::-webkit-scrollbar-track { background: transparent; }
+    .modal-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    .modal-scroll::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+  </style>
+</head>
+<body class="p-0 md:p-4 ml-5 bg-gray-50">
+  {% include 'base.html' %}
+
+  <div class="flex flex-col md:ml-64 p-4 md:p-6">
+    <div class="bg-white rounded-none md:rounded-2xl border border-[#531B24] w-full overflow-hidden">
+
+      <!-- Top bar -->
+      <div class="px-4 md:px-6 pt-4 md:pt-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h2 class="text-2xl md:text-3xl font-semibold tracking-tight text-[#531B24]">Owners</h2>
+            <p class="text-sm text-[#531B24] opacity-70">Registered tartanilla owners</p>
+          </div>
+
+          <!-- Tools -->
+          <div class="w-full md:w-auto flex flex-col sm:flex-row gap-2 sm:items-center">
+            <!-- Export PDF Button -->
+            <a href="{% url 'accounts:export_users_pdf' %}" 
+               class="inline-flex items-center px-3 py-2 text-sm bg-[#531B24] text-white rounded-xl hover:bg-[#6B2332] transition-colors">
+              <i class="fas fa-file-pdf mr-2"></i>Export PDF
+            </a>
+            <!-- Search with clear -->
+            <div class="relative text-sm w-full sm:w-64">
+              <input
+                type="text"
+                placeholder="Search name, email, phone or address…"
+                id="search-input"
+                class="pl-10 pr-9 py-2 w-full h-8 rounded-xl border border-[#531B24] focus:outline-none focus:ring-1 focus:ring-[#531B24] focus:border-[#531B24] bg-white"
+              />
+              <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-[#531B24]"></i>
+              <button
+                id="clear-search"
+                class="hidden absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                aria-label="Clear search"
+              >
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+
+            <!-- Status -->
+            <div class="text-sm">
+              <select id="status-filter"
+                class="pl-3 pr-8 h-8 rounded-xl border border-[#531B24] text-gray-700 focus:outline-none focus:ring-1 focus:ring-[#531B24] bg-white">
+                <option value="">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Suspended">Suspended</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+
+            <!-- Sort (parity; server-side unless you wire it) -->
+            <div class="text-sm">
+              <select id="sort-filter"
+                class="pl-3 pr-8 h-8 rounded-xl border border-[#531B24] text-gray-700 focus:outline-none focus:ring-1 focus:ring-[#531B24] bg-white">
+                <option>Newest</option>
+                <option>Oldest</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table wrapper -->
+      <div class="px-4 md:px-6 pb-4 md:pb-6">
+        <div class="overflow-x-auto rounded-xl mt-4 text-sm">
+          <div class="border border-gray-200 rounded-xl overflow-hidden">
+            <table class="min-w-full">
+              <thead class="bg-gray-100 relative thead-shadow">
+                <tr class="text-gray-600 text-xs uppercase tracking-wide">
+                  <th class="px-4 py-3 text-left">User</th>
+                  <th class="px-4 py-3 text-left">Email</th>
+                  <th class="px-4 py-3 text-left">Role</th>
+                  <th class="px-4 py-3 text-left">Status</th>
+                  <th class="px-4 py-3 text-left">Phone</th>
+                  <th class="px-4 py-3 text-left">Address</th>
+                  <th class="px-4 py-3 text-center">Action</th>
+                </tr>
+              </thead>
+
+              <tbody id="owners-tbody" class="bg-white divide-y divide-gray-100">
+                {% for owner in owners %}
+                <tr
+                  class="owner-row hover:bg-gray-50 transition row-card"
+                  data-username="{{ owner.username }}"
+                  data-name="{{ owner.lastname }}, {{ owner.firstname }}"
+                  data-email="{{ owner.email }}"
+                  data-phone="{{ owner.phone }}"
+                  data-address="{{ owner.address }}"
+                  data-role="{{ owner.role }}"
+                  data-status="{{ owner.status }}"
+                >
+                  <!-- User (photo + name) -->
+                  <td class="px-4 py-3">
+                    <div class="flex items-center gap-3">
+                      {% if owner.profile_photo %}
+                        <img src="{{ owner.profile_photo.url }}" alt="Profile"
+                             class="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm">
+                      {% else %}
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-gray-600 font-semibold border border-gray-200">
+                          <span class="text-xs">
+                            {{ owner.firstname|slice:":1" }}{{ owner.lastname|slice:":1" }}
+                          </span>
+                        </div>
+                      {% endif %}
+                      <div>
+                        <div class="font-medium text-gray-800">
+                          {{ owner.lastname }}, {{ owner.firstname }}
+                        </div>
+                        {% if owner.firstname %}
+                          <div class="text-xs text-gray-500">
+                            @{{ owner.firstname }}
+                          </div>
+                        {% endif %}
+                        <div class="text-xs text-gray-400 truncate max-w-[180px]">
+                          {{ owner.address }}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+
+                  <!-- Email -->
+                  <td class="px-4 py-3 text-gray-700">
+                    <a href="mailto:{{ owner.email }}" class="hover:underline">{{ owner.email }}</a>
+                  </td>
+
+                  <!-- Role (pill) -->
+                  <td class="px-4 py-3">
+                    <span class="pill text-gray-700">
+                      <i class="fas fa-id-badge mr-1 opacity-75"></i>{{ owner.role }}
+                    </span>
+                  </td>
+
+                  <!-- Status (colored pill) -->
+                  <td class="px-4 py-3">
+                    {% if owner.status == 'Active' %}
+                      <span class="pill text-green-700">
+                        <i class="fas fa-circle mr-1 text-green-500 text-[8px]"></i> Active
+                      </span>
+                    {% elif owner.status == 'Suspended' %}
+                      <span class="pill text-red-700">
+                        <i class="fas fa-ban mr-1"></i> Suspended
+                      </span>
+                    {% else %}
+                      <span class="pill text-yellow-700">
+                        <i class="fas fa-pause mr-1"></i> Inactive
+                      </span>
+                    {% endif %}
+                  </td>
+
+                  <!-- Phone -->
+                  <td class="px-4 py-3 text-gray-700">
+                    <a class="hover:underline" href="tel:{{ owner.phone }}">{{ owner.phone }}</a>
+                  </td>
+
+                  <!-- Address -->
+                  <td class="px-4 py-3 text-gray-700">
+                    <span class="text-sm">{{ owner.address|default:"N/A" }}</span>
+                  </td>
+
+                  <!-- Actions -->
+                  <td class="px-4 py-3">
+                    <div class="flex items-center justify-center space-x-3">
+                      <!-- Details -->
+                      <button
+                        onclick="openOwnerModal(this)"
+                        class="inline-flex items-center justify-center text-gray-600 hover:text-[#531B24] focus:outline-none"
+                        title="View details"
+                        aria-label="View details for {{ owner.firstname }} {{ owner.lastname }}"
+                        data-id="{{ owner.id }}"
+                        data-firstname="{{ owner.firstname }}"
+                        data-lastname="{{ owner.lastname }}"
+                        data-dob="{{ owner.dob }}"
+                        data-role="{{ owner.role }}"
+                        data-email="{{ owner.email }}"
+                        data-phone="{{ owner.phone }}"
+                        data-address="{{ owner.address }}"
+                        data-status="{{ owner.status }}"
+                        data-profile-photo="{% if owner.profile_photo %}{{ owner.profile_photo.url }}{% endif %}"
+                        data-suspended-until="{{ owner.suspended_until|default:'' }}"
+                        data-suspended-by="{{ owner.suspended_by|default:'' }}"
+                        data-suspension-reason="{{ owner.suspension_reason|default:'' }}"
+                        data-suspended-at="{{ owner.suspended_at|default:'' }}"
+                      >
+                        <i class="fas fa-eye"></i>
+                      </button>
+
+                      <!-- Owner's tartanillas modal -->
+                      <button
+                        class="inline-flex items-center justify-center text-gray-600 hover:text-[#531B24] focus:outline-none"
+                        onclick="openOwnerTartanillasModal(this)"
+                        title="View owner's tartanillas"
+                        aria-label="View tartanillas for {{ owner.firstname }} {{ owner.lastname }}"
+                        data-id="{{ owner.id }}"
+                        data-ownername="{% if owner.firstname and owner.lastname %}{{ owner.lastname }}, {{ owner.firstname }}{% elif owner.name %}{{ owner.name }}{% else %}Owner{% endif %}"
+                      >
+                        <i class="fas fa-horse-head"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr id="server-empty">
+                  <td colspan="7" class="px-4 py-8 text-center">
+                    <div class="flex flex-col items-center justify-center text-gray-500">
+                      <i class="far fa-smile-beam text-3xl mb-2"></i>
+                      <p class="font-medium">No owners found.</p>
+                      <p class="text-xs">Try adjusting filters or add a new owner.</p>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+
+                <!-- Client-side empty state -->
+                <tr id="no-results-owners" class="hidden">
+                  <td colspan="7" class="px-4 py-8 text-center">
+                    <div class="flex flex-col items-center justify-center text-gray-500">
+                      <i class="fas fa-search text-3xl mb-2"></i>
+                      <p class="font-medium">No matching owners</p>
+                      <button
+                        id="reset-filters"
+                        class="mt-2 px-3 py-1.5 rounded-lg border text-gray-700 hover:bg-gray-50"
+                      >
+                        Reset filters
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="flex items-center justify-between mt-4">
+          <div class="text-sm text-gray-700">
+            <span id="pagination-info">Showing 1 to 7 of {{ owners|length }} entries</span>
+          </div>
+          <div class="flex items-center space-x-2" id="paginationContainer">
+            <!-- Pagination buttons will be inserted here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Owner Details Modal -->
+  <div id="OwnerDetailsModal"
+       role="dialog" aria-modal="true" aria-labelledby="owner-details-title"
+       class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 ml-64">
+    <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] shadow-2xl transform transition-all duration-300 scale-95 opacity-0 modal-content relative flex flex-col">
+      <!-- Close Button -->
+      <button onclick="closeOwnerModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full hover:bg-red-50 flex items-center justify-center text-[#531B24] hover:text-red-600 transition-colors z-10" aria-label="Close">
+        <i class="fas fa-times text-sm"></i>
+      </button>
+
+      <!-- Profile Section (Sticky) -->
+      <div class="p-6 pb-0 flex-shrink-0">
+        <div class="flex items-center space-x-6 p-4 bg-gray-50 rounded-xl">
+          <div class="relative">
+            <img id="owner-profile-photo" src="{% static 'img/tartrack_colored.png' %}" alt="Profile" class="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg">
+            <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
+              <i class="fas fa-check text-white text-xs"></i>
+            </div>
+          </div>
+          <div class="flex-1">
+            <div class="flex items-center space-x-2 mb-1">
+              <h4 class="text-lg font-semibold text-gray-800" id="owner-full-name"></h4>
+              <span id="owner-status-badge" class="px-2 py-1 rounded-full text-xs font-medium"></span>
+            </div>
+            <p class="text-gray-600 text-sm" id="owner-email-display"></p>
+            <p class="text-gray-500 text-xs" id="owner-role-display"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scrollable Content -->
+      <div id="owner-modal-content-area" class="flex-1 px-6 pb-6">
+        <!-- Information Grid -->
+        <div class="mt-6 space-y-6">
+          <!-- Personal Information -->
+          <div class="bg-white border border-gray-200 rounded-xl p-3">
+            <h6 class="text-sm font-semibold text-gray-800 mb-4 flex items-center">
+              <i class="fas fa-user mr-2 text-[#531B24]"></i>
+              Personal Information
+            </h6>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="space-y-3">
+                <div class="flex flex-col">
+                  <span class="text-xs text-gray-500 mb-1">Owner ID</span>
+                  <span class="text-sm font-medium text-gray-800" id="owner-id-display"></span>
+                </div>
+                <div class="flex flex-col">
+                  <span class="text-xs text-gray-500 mb-1">First Name</span>
+                  <span class="text-sm font-medium text-gray-800" id="owner-firstname-display"></span>
+                </div>
+              </div>
+              <div class="space-y-3">
+                <div class="flex flex-col">
+                  <span class="text-xs text-gray-500 mb-1">Last Name</span>
+                  <span class="text-sm font-medium text-gray-800" id="owner-lastname-display"></span>
+                </div>
+                <div class="flex flex-col">
+                  <span class="text-xs text-gray-500 mb-1">Date of Birth</span>
+                  <span class="text-sm font-medium text-gray-800" id="owner-dob-display"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contact Information -->
+          <div class="bg-white border border-gray-200 rounded-xl p-4">
+            <h6 class="text-sm font-semibold text-gray-800 mb-4 flex items-center">
+              <i class="fas fa-address-book mr-2 text-[#531B24]"></i>
+              Contact Information
+            </h6>
+            <div class="space-y-3">
+              <div class="flex flex-col">
+                <span class="text-xs text-gray-500 mb-1">Phone Number</span>
+                <a href="#" class="text-sm font-medium text-[#531B24] hover:underline" id="owner-phone-display"></a>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-xs text-gray-500 mb-1">Email Address</span>
+                <a href="#" class="text-sm font-medium text-[#531B24] hover:underline" id="owner-email-link"></a>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-xs text-gray-500 mb-1">Address</span>
+                <span class="text-sm font-medium text-gray-800" id="owner-address-display"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status Management -->
+        <div class="mt-3 p-4 bg-gray-50 rounded-xl">
+          <div class="flex items-center justify-between">
+            <div>
+              <h5 class="text-sm font-medium text-gray-800 mb-1">Account Status</h5>
+              <p class="text-xs text-gray-500">Manage owner account status and permissions</p>
+            </div>
+            <button id="owner-suspend-button" onclick="toggleOwnerSuspension(); scrollToOwnerSuspensionForm()" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+              Suspend
+            </button>
+          </div>
+        </div>
+
+        <!-- Current Suspension Info -->
+        <div id="owner-current-suspension-info" class="mt-4 hidden">
+          <div class="bg-red-50 border border-red-200 rounded-xl p-4">
+            <div class="flex items-center space-x-2 mb-3">
+              <i class="fas fa-exclamation-triangle text-red-500"></i>
+              <h5 class="text-red-800 font-medium">Current Suspension</h5>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div class="space-y-2">
+                <div class="flex justify-between">
+                  <span class="text-red-700">Until:</span>
+                  <span id="owner-current-suspended-until" class="text-red-600 font-medium"></span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-red-700">By:</span>
+                  <span id="owner-current-suspended-by" class="text-red-600 font-medium"></span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-red-700">On:</span>
+                  <span id="owner-current-suspended-at" class="text-red-600 font-medium"></span>
+                </div>
+              </div>
+              <div class="space-y-2">
+                <div>
+                  <span class="text-red-700 block">Reason:</span>
+                  <p id="owner-current-suspension-reason" class="text-red-600 text-xs mt-1"></p>
+                </div>
+                <div>
+                  <span class="text-red-700 block">Time Remaining:</span>
+                  <p id="owner-current-time-remaining" class="text-red-600 font-semibold text-xs mt-1"></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Suspension Form -->
+        <div id="owner-suspension-details" class="mt-4 hidden">
+          <div class="bg-red-50 border border-red-200 rounded-xl p-4">
+            <h5 class="text-red-800 font-medium mb-4">Suspend Account</h5>
+            <div class="space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-red-700 text-sm font-medium mb-2">Duration</label>
+                  <select id="owner-suspension-duration" class="w-full bg-white rounded-lg px-3 py-2 border border-red-300 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                    <option value="1">1 Day</option>
+                    <option value="3">3 Days</option>
+                    <option value="7" selected>1 Week</option>
+                    <option value="14">2 Weeks</option>
+                    <option value="30">1 Month</option>
+                    <option value="90">3 Months</option>
+                    <option value="365">1 Year</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
+                <div id="owner-custom-duration-container" class="hidden">
+                  <label class="block text-red-700 text-sm font-medium mb-2">Custom Days</label>
+                  <input type="number" id="owner-custom-duration" min="1" max="3650" class="w-full bg-white rounded-lg px-3 py-2 border border-red-300 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                </div>
+              </div>
+              <div>
+                <label class="block text-red-700 text-sm font-medium mb-2">Reason</label>
+                <textarea id="owner-suspension-reason" rows="3" placeholder="Enter reason for suspension..."
+                  class="w-full bg-white rounded-lg px-3 py-2 border border-red-300 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-500"></textarea>
+              </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+              <button onclick="cancelOwnerSuspension()" class="px-4 py-2 text-gray-600 hover:text-gray-800 text-sm font-medium transition-colors">
+                Cancel
+              </button>
+              <button onclick="confirmOwnerSuspension()" class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 text-sm font-medium transition-colors">
+                Confirm Suspension
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Owner Tartanillas Modal -->
+  <div id="OwnerTartanillasModal"
+       role="dialog" aria-modal="true" aria-labelledby="owner-tartanillas-modal-title"
+       class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-start justify-center p-4 md:ml-64">
+    <div class="bg-white rounded-2xl w-[95%] md:w-[1000px] my-10 max-h-[85vh] p-6 flex flex-col overflow-hidden relative">
+      <button onclick="closeOwnerTartanillasModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-xl" aria-label="Close">&times;</button>
+      <h3 id="owner-tartanillas-modal-title" class="text-xl font-semibold mb-2">Owner's Tartanillas</h3>
+      <div id="owner-tartanillas-owner-label" class="text-sm text-gray-600 mb-3"></div>
+
+      <div class="overflow-auto flex-1 border rounded-xl">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+          <thead class="bg-gray-50 sticky top-0">
+            <tr class="text-left text-gray-600">
+              <th class="px-3 py-2">ID</th>
+              <th class="px-3 py-2">Name</th>
+              <th class="px-3 py-2">Code / Plate</th>
+              <th class="px-3 py-2">Driver</th>
+              <th class="px-3 py-2">Status</th>
+              <th class="px-3 py-2">Details</th>
+            </tr>
+          </thead>
+          <tbody id="owner-tartanillas-body" class="divide-y divide-gray-100">
+            <tr id="owner-tartanillas-loading" class="hidden">
+              <td colspan="6" class="px-3 py-4 text-center text-gray-500">Loading...</td>
+            </tr>
+            <tr id="owner-tartanillas-error" class="hidden">
+              <td colspan="6" class="px-3 py-4 text-center text-red-600">Failed to load tartanillas. Please try again.</td>
+            </tr>
+            <tr id="owner-tartanillas-empty" class="hidden">
+              <td colspan="6" class="px-3 py-4 text-center text-gray-500">No tartanillas owned.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="{% static 'js/sidebar.js' %}"></script>
+  <script>
+    let currentOwnerId = null;
+    let currentOwnerStatus = null;
+
+    // scroll lock
+    function lockBodyScroll(){ document.documentElement.classList.add('overflow-hidden'); }
+    function unlockBodyScroll(){ document.documentElement.classList.remove('overflow-hidden'); }
+
+    // Debounce helper
+    function debounce(fn, delay=200){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn.apply(this,a), delay); }; }
+
+    // ====== Modal Open/Close ======
+    function openOwnerModal(btn) {
+      currentOwnerId = btn.getAttribute('data-id');
+      currentOwnerStatus = btn.getAttribute('data-status');
+
+      const firstName = btn.getAttribute('data-firstname') || '';
+      const lastName = btn.getAttribute('data-lastname') || '';
+      const email = btn.getAttribute('data-email') || '';
+      const phone = btn.getAttribute('data-phone') || '';
+      const role = btn.getAttribute('data-role') || '';
+      const address = btn.getAttribute('data-address') || '';
+      const dob = btn.getAttribute('data-dob') || '';
+
+      // Update profile section
+      document.getElementById('owner-full-name').textContent = `${firstName} ${lastName}`;
+      document.getElementById('owner-email-display').textContent = email;
+      document.getElementById('owner-role-display').textContent = role;
+      
+      // Update information displays
+      document.getElementById('owner-id-display').textContent = currentOwnerId;
+      document.getElementById('owner-firstname-display').textContent = firstName;
+      document.getElementById('owner-lastname-display').textContent = lastName;
+      document.getElementById('owner-dob-display').textContent = dob || 'Not provided';
+      document.getElementById('owner-phone-display').textContent = phone;
+      document.getElementById('owner-phone-display').href = `tel:${phone}`;
+      document.getElementById('owner-email-link').textContent = email;
+      document.getElementById('owner-email-link').href = `mailto:${email}`;
+      document.getElementById('owner-address-display').textContent = address || 'Not provided';
+
+      // Update status badge
+      const statusBadge = document.getElementById('owner-status-badge');
+      statusBadge.textContent = currentOwnerStatus;
+      statusBadge.className = 'px-2 py-1 rounded-full text-xs font-medium ';
+      if (currentOwnerStatus === 'Active') {
+        statusBadge.className += 'bg-green-100 text-green-800';
+      } else if (currentOwnerStatus === 'Suspended') {
+        statusBadge.className += 'bg-red-100 text-red-800';
+      } else {
+        statusBadge.className += 'bg-yellow-100 text-yellow-800';
+      }
+
+      const photo = btn.getAttribute('data-profile-photo');
+      document.getElementById('owner-profile-photo').src = (photo && photo !== '') ? photo : "{% static 'img/tartrack_colored.png' %}";
+
+      if (currentOwnerStatus === 'Suspended') { showOwnerCurrentSuspensionInfo(btn); } else { hideOwnerCurrentSuspensionInfo(); }
+      updateOwnerSuspendButton();
+
+      // Show modal with animation
+      const modal = document.getElementById('OwnerDetailsModal');
+      const modalContent = modal.querySelector('.modal-content');
+      modal.classList.remove('hidden');
+      lockBodyScroll();
+      
+      // Trigger animation
+      setTimeout(() => {
+        modalContent.classList.remove('scale-95', 'opacity-0');
+        modalContent.classList.add('scale-100', 'opacity-100');
+      }, 10);
+    }
+    
+    function closeOwnerModal() {
+      const modal = document.getElementById('OwnerDetailsModal');
+      const modalContent = modal.querySelector('.modal-content');
+      
+      // Animate out
+      modalContent.classList.remove('scale-100', 'opacity-100');
+      modalContent.classList.add('scale-95', 'opacity-0');
+      
+      setTimeout(() => {
+        modal.classList.add('hidden');
+        cancelOwnerSuspension(); hideOwnerCurrentSuspensionInfo();
+        currentOwnerId = null; currentOwnerStatus = null;
+        unlockBodyScroll();
+      }, 200);
+    }
+
+    // ====== Current Suspension Info ======
+    function showOwnerCurrentSuspensionInfo(btn) {
+      const suspendedUntil = btn.getAttribute('data-suspended-until');
+      const suspendedBy    = btn.getAttribute('data-suspended-by');
+      const reason         = btn.getAttribute('data-suspension-reason');
+      const suspendedAt    = btn.getAttribute('data-suspended-at');
+
+      if (suspendedUntil) {
+        document.getElementById('owner-current-suspended-until').textContent = formatDateTime(suspendedUntil);
+        document.getElementById('owner-current-suspended-by').textContent    = suspendedBy || 'Unknown';
+        document.getElementById('owner-current-suspension-reason').textContent = reason || 'No reason provided';
+        document.getElementById('owner-current-suspended-at').textContent    = formatDateTime(suspendedAt);
+        document.getElementById('owner-current-time-remaining').textContent  = calculateTimeRemaining(suspendedUntil);
+
+        document.getElementById('owner-current-suspension-info').classList.remove('hidden');
+        enableOwnerModalScroll();
+        document.getElementById('owner-current-suspension-info').scrollIntoView({ behavior:'smooth', block:'nearest' });
+      }
+    }
+    function hideOwnerCurrentSuspensionInfo(){ 
+      document.getElementById('owner-current-suspension-info').classList.add('hidden');
+      disableOwnerModalScroll();
+    }
+
+    // ====== Suspend Button State & Toggle ======
+    function updateOwnerSuspendButton() {
+      const btn = document.getElementById('owner-suspend-button');
+      if (currentOwnerStatus === 'Suspended') {
+        btn.textContent = 'Unsuspend Account';
+        btn.className = 'bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium transition-colors';
+        document.getElementById('owner-suspension-details').classList.add('hidden');
+      } else {
+        btn.textContent = 'Suspend Account';
+        btn.className = 'bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm font-medium transition-colors';
+        hideOwnerCurrentSuspensionInfo();
+      }
+    }
+    function toggleOwnerSuspension(){ currentOwnerStatus === 'Suspended' ? unsuspendOwner() : showOwnerSuspensionDetails(); }
+    function showOwnerSuspensionDetails(){
+      const el = document.getElementById('owner-suspension-details');
+      el.classList.remove('hidden');
+      enableOwnerModalScroll();
+    }
+    
+    function scrollToOwnerSuspensionForm() {
+      setTimeout(() => {
+        const modalContent = document.getElementById('owner-modal-content-area');
+        if (modalContent.classList.contains('overflow-y-auto')) {
+          modalContent.scrollTo({ top: modalContent.scrollHeight, behavior: 'smooth' });
+        }
+      }, 100);
+    }
+    
+    function enableOwnerModalScroll() {
+      const modalContent = document.getElementById('owner-modal-content-area');
+      modalContent.classList.add('overflow-y-auto', 'modal-scroll');
+    }
+    
+    function disableOwnerModalScroll() {
+      const modalContent = document.getElementById('owner-modal-content-area');
+      modalContent.classList.remove('overflow-y-auto', 'modal-scroll');
+    }
+    function cancelOwnerSuspension(){
+      document.getElementById('owner-suspension-details').classList.add('hidden');
+      document.getElementById('owner-suspension-reason').value = '';
+      document.getElementById('owner-suspension-duration').value = '7';
+      const ci = document.getElementById('owner-custom-duration'); if (ci) ci.value = '';
+      hideOwnerCustomDuration();
+      disableOwnerModalScroll();
+    }
+
+    // Custom duration toggle
+    document.addEventListener('change', (e)=>{
+      if (e.target?.id === 'owner-suspension-duration'){
+        e.target.value === 'custom' ? showOwnerCustomDuration() : hideOwnerCustomDuration();
+      }
+    });
+    function showOwnerCustomDuration(){
+      document.getElementById('owner-custom-duration-container').classList.remove('hidden');
+      const grid = document.querySelector('#owner-suspension-details .grid'); grid.classList.remove('grid-cols-2'); grid.classList.add('grid-cols-3');
+    }
+    function hideOwnerCustomDuration(){
+      document.getElementById('owner-custom-duration-container').classList.add('hidden');
+      const grid = document.querySelector('#owner-suspension-details .grid'); grid.classList.remove('grid-cols-3'); grid.classList.add('grid-cols-2');
+    }
+
+    // ====== API: Suspend / Unsuspend ======
+    function confirmOwnerSuspension(){
+      const sel = document.getElementById('owner-suspension-duration').value;
+      const custom = document.getElementById('owner-custom-duration')?.value;
+      const reason = document.getElementById('owner-suspension-reason').value.trim();
+      let days = sel === 'custom' ? parseInt(custom,10) : parseInt(sel,10);
+      if (sel === 'custom' && (!days || days<1)) return showErrorModal('Please enter a valid custom duration.');
+      if (!reason) return showErrorModal('Please provide a reason for suspension.');
+      suspendOwner(days, reason);
+    }
+    async function suspendOwner(days, reason){
+      try {
+        const r = await fetch('/accounts/api/suspend-owner/', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ user_id: currentOwnerId, duration_days: days, reason })
+        });
+        const j = await r.json();
+        if (j.success){
+          showSuccessModal('Owner suspended successfully!');
+          currentOwnerStatus = 'Suspended';
+          document.getElementById('owner-status').value = 'Suspended';
+          updateOwnerSuspendButton(); cancelOwnerSuspension(); setTimeout(() => location.reload(), 1500);
+        } else showErrorModal('Error: ' + (j.error || 'Failed to suspend owner'));
+      } catch(e){ console.error(e); showErrorModal('Failed to suspend owner. Please try again.'); }
+    }
+    async function unsuspendOwner(){
+      showConfirmModal('Are you sure you want to unsuspend this owner?', async () => {
+        try {
+        const r = await fetch('/accounts/api/unsuspend-owner/', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ user_id: currentOwnerId })
+        });
+        const j = await r.json();
+        if (j.success){
+          showSuccessModal('Owner unsuspended successfully!');
+          currentOwnerStatus = 'Active';
+          document.getElementById('owner-status').value = 'Active';
+          updateOwnerSuspendButton(); setTimeout(() => location.reload(), 1500);
+        } else showErrorModal('Error: ' + (j.error || 'Failed to unsuspend owner'));
+      } catch(e){ console.error(e); showErrorModal('Failed to unsuspend owner. Please try again.'); }
+      });
+    }
+
+    // ====== Utils ======
+    function formatDateTime(iso){
+      if (!iso) return 'N/A';
+      const d = new Date(iso);
+      return d.toLocaleString('en-US',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    }
+    function calculateTimeRemaining(until){
+      if (!until) return 'N/A';
+      const end = new Date(until), now = new Date(), diff = end - now;
+      if (diff <= 0) return 'Expired';
+      const d = Math.floor(diff/86400000), h = Math.floor(diff%86400000/3600000), m = Math.floor(diff%3600000/60000);
+      if (d>0) return `${d} day${d!==1?'s':''}, ${h} hour${h!==1?'s':''}`;
+      if (h>0) return `${h} hour${h!==1?'s':''}, ${m} minute${m!==1?'s':''}`;
+      return `${m} minute${m!==1?'s':''} remaining`;
+    }
+
+    // ====== PAGINATION + FILTERING ======
+    const pageSize = 7;
+    let currentPage = 1;
+    let allRows = [];
+    let filteredRows = [];
+
+    function updatePagination() {
+      const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+      const paginationContainer = document.getElementById('paginationContainer');
+      paginationContainer.innerHTML = '';
+      
+      if (totalPages <= 1) return;
+      
+      // First page button
+      if (currentPage > 1) {
+        const firstBtn = document.createElement('button');
+        firstBtn.innerHTML = '<i class="fas fa-angle-double-left"></i>';
+        firstBtn.className = 'px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50';
+        firstBtn.onclick = () => renderPage(1);
+        paginationContainer.appendChild(firstBtn);
+        
+        const prevBtn = document.createElement('button');
+        prevBtn.innerHTML = '<i class="fas fa-angle-left"></i>';
+        prevBtn.className = 'px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50';
+        prevBtn.onclick = () => renderPage(currentPage - 1);
+        paginationContainer.appendChild(prevBtn);
+      }
+      
+      // Page number buttons
+      const startPage = Math.max(1, currentPage - 2);
+      const endPage = Math.min(totalPages, currentPage + 2);
+      
+      for (let i = startPage; i <= endPage; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.textContent = i;
+        if (i === currentPage) {
+          pageBtn.className = 'px-3 py-2 text-sm font-medium text-white bg-[#531B24] border border-[#531B24] rounded-md';
+        } else {
+          pageBtn.className = 'px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50';
+          pageBtn.onclick = () => renderPage(i);
+        }
+        paginationContainer.appendChild(pageBtn);
+      }
+      
+      // Last page button
+      if (currentPage < totalPages) {
+        const nextBtn = document.createElement('button');
+        nextBtn.innerHTML = '<i class="fas fa-angle-right"></i>';
+        nextBtn.className = 'px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50';
+        nextBtn.onclick = () => renderPage(currentPage + 1);
+        paginationContainer.appendChild(nextBtn);
+        
+        const lastBtn = document.createElement('button');
+        lastBtn.innerHTML = '<i class="fas fa-angle-double-right"></i>';
+        lastBtn.className = 'px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50';
+        lastBtn.onclick = () => renderPage(totalPages);
+        paginationContainer.appendChild(lastBtn);
+      }
+    }
+
+    function renderPage(page) {
+      currentPage = page;
+      // Hide all rows first
+      allRows.forEach(r => r.style.display = 'none');
+      
+      const start = (currentPage - 1) * pageSize;
+      const endExclusive = Math.min(start + pageSize, filteredRows.length);
+      const pageRows = filteredRows.slice(start, endExclusive);
+      pageRows.forEach(r => r.style.display = '');
+      
+      const from = filteredRows.length ? (start + 1) : 0;
+      const to = endExclusive;
+      const total = allRows.length;
+      
+      document.getElementById('pagination-info').textContent = `Showing ${from} to ${to} of ${total} entries`;
+      updatePagination();
+    }
+
+    function filterOwners() {
+      const q = document.getElementById('search-input').value.toLowerCase().trim();
+      const statusFilter = document.getElementById('status-filter').value;
+
+      // Compute filtered rows without showing them yet
+      filteredRows = allRows.filter(row => {
+        const username = (row.dataset.username || '').toLowerCase();
+        const name     = (row.dataset.name || '').toLowerCase();
+        const email    = (row.dataset.email || '').toLowerCase();
+        const phone    = (row.dataset.phone || '').toLowerCase();
+        const address  = (row.dataset.address || '').toLowerCase();
+        const role     = (row.dataset.role || '').toLowerCase();
+        const status   = (row.dataset.status || '').trim();
+
+        const matchesSearch =
+          !q || username.includes(q) || name.includes(q) || email.includes(q) ||
+          phone.includes(q) || address.includes(q) || role.includes(q);
+        const matchesStatus = !statusFilter || status === statusFilter;
+
+        return matchesSearch && matchesStatus;
+      });
+
+      const noResults = document.getElementById('no-results-owners');
+      if (noResults) {
+        noResults.classList.toggle('hidden', filteredRows.length !== 0);
+      }
+
+      // toggle clear
+      document.getElementById('clear-search').classList.toggle('hidden', q.length === 0);
+      
+      // After filtering, render first page
+      renderPage(1);
+    }
+
+    const debouncedFilter = debounce(filterOwners, 200);
+    document.getElementById('search-input').addEventListener('input', debouncedFilter);
+    document.getElementById('status-filter').addEventListener('change', filterOwners);
+
+    document.getElementById('clear-search').addEventListener('click', () => {
+      const input = document.getElementById('search-input');
+      input.value = '';
+      input.focus();
+      filterOwners();
+    });
+
+    document.getElementById('reset-filters')?.addEventListener('click', () => {
+      document.getElementById('search-input').value = '';
+      document.getElementById('status-filter').value = '';
+      filterOwners();
+    });
+
+    // Initialize pagination on load
+    document.addEventListener('DOMContentLoaded', () => {
+      allRows = Array.from(document.querySelectorAll('.owner-row'));
+      filteredRows = allRows.slice();
+      renderPage(1);
+      filterOwners();
+    });
+
+    // ====== Owner Tartanillas Modal ======
+    const OWNER_TARTANILLAS_API_URL = '/accounts/api/owner-assigned-tartanillas/';
+
+    function openOwnerTartanillasModal(btn) {
+      const ownerId = btn.getAttribute('data-id');
+      const ownerName = btn.getAttribute('data-ownername') || 'Unknown Owner';
+      document.getElementById('owner-tartanillas-owner-label').textContent = `Owner: ${ownerName}`;
+
+      clearOwnerTartanillasRows();
+      showOwnerTartanillasLoading();
+
+      document.getElementById('OwnerTartanillasModal').classList.remove('hidden');
+      lockBodyScroll();
+
+      const url = `${OWNER_TARTANILLAS_API_URL}?owner_id=${encodeURIComponent(ownerId)}`;
+      console.log('Fetching owner tartanillas from:', url);
+      
+      fetch(url, { headers: { 'Accept': 'application/json' }})
+        .then(r => {
+          console.log('Response status:', r.status);
+          if (!r.ok) {
+            return r.text().then(text => {
+              console.error('Error response:', text);
+              throw new Error(`HTTP ${r.status}: ${text}`);
+            });
+          }
+          return r.json();
+        })
+        .then(data => {
+          console.log('Received data:', data);
+          hideOwnerTartanillasLoading();
+          renderOwnerTartanillas(data);
+        })
+        .catch(err => {
+          console.error('Load owner tartanillas error:', err);
+          hideOwnerTartanillasLoading();
+          showOwnerTartanillasError();
+        });
+    }
+    
+    function closeOwnerTartanillasModal() {
+      document.getElementById('OwnerTartanillasModal').classList.add('hidden');
+      unlockBodyScroll();
+      clearOwnerTartanillasRows();
+      hideOwnerTartanillasLoading();
+      hideOwnerTartanillasError();
+      hideOwnerTartanillasEmpty();
+    }
+    
+    function clearOwnerTartanillasRows() {
+      const body = document.getElementById('owner-tartanillas-body');
+      [...body.querySelectorAll('tr.dynamic-row')].forEach(tr => tr.remove());
+    }
+    
+    function renderOwnerTartanillas(payload) {
+      console.log('Rendering tartanillas with payload:', payload);
+      const body = document.getElementById('owner-tartanillas-body');
+      
+      // Handle different response formats
+      let items = [];
+      if (Array.isArray(payload)) {
+        items = payload;
+      } else if (payload && payload.success && Array.isArray(payload.data)) {
+        items = payload.data;
+      } else if (payload && Array.isArray(payload.items)) {
+        items = payload.items;
+      }
+      
+      console.log('Items to render:', items);
+      
+      if (!items.length) {
+        showOwnerTartanillasEmpty();
+        return;
+      }
+      
+      items.forEach(item => {
+        const id = item.id ?? item.tartanilla_id ?? '';
+        const name = item.name ?? item.tartanilla_name ?? item.plate_number ?? '';
+        const code = item.code ?? item.plate_number ?? item.registration_no ?? '';
+        const driver = item.driver_name ?? item.driver ?? 'Unassigned';
+        const status = item.status ?? '';
+        const details = item.details ?? item.notes ?? item.remark ?? '';
+        
+        const tr = document.createElement('tr');
+        tr.className = 'dynamic-row';
+        tr.innerHTML = `
+          <td class="px-3 py-2">${escapeHtml(id)}</td>
+          <td class="px-3 py-2">${escapeHtml(name)}</td>
+          <td class="px-3 py-2">${escapeHtml(code)}</td>
+          <td class="px-3 py-2">${escapeHtml(driver)}</td>
+          <td class="px-3 py-2 ${status === 'Active' ? 'text-green-600' : status === 'Inactive' ? 'text-yellow-600' : status === 'Suspended' ? 'text-red-600' : 'text-gray-700'}">
+            ${escapeHtml(status)}
+          </td>
+          <td class="px-3 py-2">${escapeHtml(details)}</td>
+        `;
+        body.appendChild(tr);
+      });
+    }
+    
+    function showOwnerTartanillasLoading(){ document.getElementById('owner-tartanillas-loading').classList.remove('hidden'); }
+    function hideOwnerTartanillasLoading(){ document.getElementById('owner-tartanillas-loading').classList.add('hidden'); }
+    function showOwnerTartanillasError(){ document.getElementById('owner-tartanillas-error').classList.remove('hidden'); }
+    function hideOwnerTartanillasError(){ document.getElementById('owner-tartanillas-error').classList.add('hidden'); }
+    function showOwnerTartanillasEmpty(){ document.getElementById('owner-tartanillas-empty').classList.remove('hidden'); }
+    function hideOwnerTartanillasEmpty(){ document.getElementById('owner-tartanillas-empty').classList.add('hidden'); }
+
+    // Utility function to escape HTML
+    function escapeHtml(text) {
+      if (text === null || text === undefined) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ESC to close modals
+    document.addEventListener('keydown', (e) => {
+      const ownerTartanillasOpen = !document.getElementById('OwnerTartanillasModal').classList.contains('hidden');
+      const ownerDetailsOpen = !document.getElementById('OwnerDetailsModal').classList.contains('hidden');
+      if (e.key === 'Escape') {
+        if (ownerTartanillasOpen) closeOwnerTartanillasModal();
+        else if (ownerDetailsOpen) closeOwnerModal();
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,691 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Report Details - TarTrack</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="{% static 'css/sidebar.css' %}" />
+</head>
+<body class="bg-[#F5F5F5] font-sans">
+  {% include 'base.html' %}
+
+  <main class="md:ml-64 min-h-screen bg-[#f5f5f5] text-[#561c24] mr-12">
+    <div class="max-w-7xl mx-auto p-8 ml-8">
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-[#561c24]">Report Details</h1>
+        <a href="{% url 'reports_list' %}" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors">
+          ← Back to Reports
+        </a>
+      </div>
+
+      {% if error %}
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+          {{ error }}
+        </div>
+      {% else %}
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Main Content -->
+          <div class="lg:col-span-2 space-y-6">
+            <!-- Report Information -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div class="border-b border-gray-200 px-6 py-4">
+                <h2 class="text-lg font-semibold text-[#561c24]">Report Information</h2>
+              </div>
+              <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div class="space-y-3">
+                    <div><span class="font-medium">Report ID:</span> <span class="text-gray-600">#{{ report.id }}</span></div>
+                    <div>
+                      <span class="font-medium">Type:</span>
+                      <span class="ml-2 px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">
+                        {% if report.report_type == 'driver_cancellation' %}Driver Cancellation
+                        {% elif report.report_type == 'tourist_complaint' %}Tourist Complaint
+                        {% elif report.report_type == 'driver_complaint' %}Driver Complaint
+                        {% elif report.report_type == 'system_issue' %}System Issue
+                        {% elif report.report_type == 'verification_fraud' %}Verification Fraud
+                        {% else %}{{ report.report_type|title }}{% endif %}
+                      </span>
+                    </div>
+                    <div><span class="font-medium">Title:</span> <span class="text-gray-600">{{ report.title }}</span></div>
+                    <div><span class="font-medium">Reporter:</span> <span class="text-gray-600">{{ report.reporter_type|title }}</span></div>
+                    <div><span class="font-medium">Created:</span> <span class="text-gray-600">{{ report.created_at|date:"M d, Y H:i" }}</span></div>
+                  </div>
+                  <div class="space-y-3">
+                    <div>
+                      <span class="font-medium">Status:</span>
+                      {% if report.status == 'pending' %}
+                        <span class="ml-2 px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">Pending</span>
+                      {% elif report.status == 'investigating' %}
+                        <span class="ml-2 px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">Investigating</span>
+                      {% elif report.status == 'resolved' %}
+                        <span class="ml-2 px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Resolved</span>
+                      {% elif report.status == 'dismissed' %}
+                        <span class="ml-2 px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">Dismissed</span>
+                      {% endif %}
+                    </div>
+                    <div>
+                      <span class="font-medium">Priority:</span>
+                      {% if report.priority == 'critical' %}
+                        <span class="ml-2 px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Critical</span>
+                      {% elif report.priority == 'high' %}
+                        <span class="ml-2 px-2 py-1 text-xs rounded-full bg-orange-100 text-orange-800">High</span>
+                      {% elif report.priority == 'medium' %}
+                        <span class="ml-2 px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">Medium</span>
+                      {% else %}
+                        <span class="ml-2 px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">Low</span>
+                      {% endif %}
+                    </div>
+                    {% if report.resolved_at %}
+                      <div><span class="font-medium">Resolved:</span> <span class="text-gray-600">{{ report.resolved_at|date:"M d, Y H:i" }}</span></div>
+                    {% endif %}
+                    {% if report.updated_at %}
+                      <div><span class="font-medium">Last Updated:</span> <span class="text-gray-600">{{ report.updated_at|date:"M d, Y H:i" }}</span></div>
+                    {% endif %}
+                  </div>
+                </div>
+                
+                <div class="mt-6 pt-6 border-t border-gray-200">
+                  <h3 class="font-semibold text-[#561c24] mb-3 flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Report Description
+                  </h3>
+                  <div class="bg-gray-50 rounded-lg p-4 border-l-4 border-[#561c24]">
+                    <div class="prose prose-sm max-w-none">
+                      <p class="text-gray-700 leading-relaxed whitespace-pre-line">{{ report.description|linebreaksbr }}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                {% if report.admin_notes %}
+                <div class="mt-6">
+                  <h3 class="font-semibold text-[#561c24] mb-3 flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
+                    Admin Notes
+                  </h3>
+                  <div class="bg-blue-50 rounded-lg p-4 border-l-4 border-blue-400">
+                    <div class="prose prose-sm max-w-none">
+                      <p class="text-blue-800 leading-relaxed whitespace-pre-line">{{ report.admin_notes|linebreaksbr }}</p>
+                    </div>
+                  </div>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Related Booking Information -->
+            {% if booking %}
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div class="border-b border-gray-200 px-6 py-4">
+                <h2 class="text-lg font-semibold text-[#561c24]">Related Booking</h2>
+              </div>
+              <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div class="space-y-3">
+                    <div><span class="font-medium">Booking ID:</span> <span class="text-gray-600">#{{ booking.id }}</span></div>
+                    <div><span class="font-medium">Package:</span> <span class="text-gray-600">{{ booking.package_name }}</span></div>
+                    <div><span class="font-medium">Customer:</span> <span class="text-gray-600">{{ booking.customer_name }}</span></div>
+                    <div><span class="font-medium">Driver:</span> <span class="text-gray-600">{{ booking.driver_name|default:"Not assigned" }}</span></div>
+                  </div>
+                  <div class="space-y-3">
+                    <div>
+                      <span class="font-medium">Status:</span>
+                      <span class="ml-2 px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">{{ booking.status|title }}</span>
+                    </div>
+                    <div><span class="font-medium">Booking Date:</span> <span class="text-gray-600">{{ booking.booking_date|date:"M d, Y" }}</span></div>
+                    <div><span class="font-medium">Total Amount:</span> <span class="text-gray-600">₱{{ booking.total_amount }}</span></div>
+                    <div><span class="font-medium">Passengers:</span> <span class="text-gray-600">{{ booking.number_of_pax }}</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endif %}
+
+            <!-- Post Media (Goods & Services) -->
+            {% if post_media %}
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div class="border-b border-gray-200 px-6 py-4">
+                <h2 class="text-lg font-semibold text-[#561c24]">Reported Post Media</h2>
+              </div>
+              <div class="p-6">
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {% for media_url in post_media %}
+                  <div class="relative group">
+                    <img src="{{ media_url }}" alt="Post media" class="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90" onclick="openImageModal('{{ media_url }}')" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect fill=%22%23ddd%22 width=%22200%22 height=%22200%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22%3EImage not found%3C/text%3E%3C/svg%3E'">
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+            {% endif %}
+
+            <!-- Related User Information -->
+            {% if related_user %}
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div class="border-b border-gray-200 px-6 py-4">
+                <h2 class="text-lg font-semibold text-[#561c24]">Related User</h2>
+              </div>
+              <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div class="space-y-3">
+                    <div><span class="font-medium">User ID:</span> <span class="text-gray-600">#{{ related_user.id }}</span></div>
+                    <div><span class="font-medium">Name:</span> <span class="text-gray-600">{{ related_user.name }}</span></div>
+                    <div><span class="font-medium">Email:</span> <span class="text-gray-600">{{ related_user.email }}</span></div>
+                  </div>
+                  <div class="space-y-3">
+                    <div>
+                      <span class="font-medium">Role:</span>
+                      <span class="ml-2 px-2 py-1 text-xs rounded-full bg-[#561c24] text-white">{{ related_user.role|title }}</span>
+                    </div>
+                    <div>
+                      <span class="font-medium">Status:</span>
+                      <span class="ml-2 px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">{{ related_user.status|title }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Actions Panel -->
+          <div class="space-y-6">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div class="border-b border-gray-200 px-6 py-4">
+                <h2 class="text-lg font-semibold text-[#561c24]">Actions</h2>
+              </div>
+              <div class="p-6">
+                {% if report.report_type == 'driver_cancellation' and report.status == 'pending' %}
+                <!-- Driver Cancellation Review -->
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                  <div class="flex items-start">
+                    <div class="text-yellow-600 text-xl mr-3">⚠️</div>
+                    <div>
+                      <h3 class="font-semibold text-yellow-800 mb-2">Driver Cancellation Review Required</h3>
+                      <p class="text-sm text-yellow-700 mb-3">Your decision will determine if this cancellation affects the driver's metrics.</p>
+                      <div class="text-xs text-yellow-600">
+                        <div><strong>Justified:</strong> No penalty, no metrics impact</div>
+                        <div><strong>Unjustified:</strong> Increases cancellation count, may lead to suspension</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <form id="cancellationReviewForm" class="space-y-4">
+                  {% csrf_token %}
+                  <div>
+                    <label class="block font-medium mb-3">Cancellation Decision</label>
+                    <div class="border border-gray-200 rounded-lg p-4 space-y-3">
+                      <label class="flex items-start space-x-3 cursor-pointer">
+                        <input type="radio" name="decision" value="justified" required class="mt-1">
+                        <div>
+                          <div class="flex items-center space-x-2">
+                            <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">✅ JUSTIFIED</span>
+                            <span class="font-medium">No Penalty</span>
+                          </div>
+                          <p class="text-sm text-gray-600 mt-1">Valid reason (emergency, vehicle breakdown, etc.)</p>
+                        </div>
+                      </label>
+                      <label class="flex items-start space-x-3 cursor-pointer">
+                        <input type="radio" name="decision" value="unjustified" required class="mt-4">
+                        <div>
+                          <div class="flex items-center space-x-2">
+                            <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800 w-32">❌ UNJUSTIFIED</span>
+                            <span class="font-medium">Affects Driver Metrics</span>
+                          </div>
+                          <p class="text-sm text-gray-600 mt-1">Unreasonable cancellation, will count towards suspension threshold</p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label for="review_notes" class="block font-medium mb-2">Review Notes <span class="text-red-500">*</span></label>
+                    <textarea id="review_notes" name="admin_notes" rows="4" required 
+                              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#561c24] focus:border-transparent" 
+                              placeholder="Explain your decision and reasoning..."></textarea>
+                    <p class="text-sm text-gray-600 mt-1">Provide clear reasoning for your decision. This will be logged for audit purposes.</p>
+                  </div>
+                  
+                  <button type="submit" class="w-full bg-[#561c24] hover:bg-[#6d2631] text-white py-3 px-4 rounded-lg font-medium transition-colors">
+                    Submit Final Decision
+                  </button>
+                </form>
+                
+                {% elif 'goods' in report.report_type|lower and 'services' in report.report_type|lower and report.status == 'pending' %}
+                <!-- Goods & Services Violation Actions -->
+                <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+                  <div class="flex items-start">
+                    <div class="text-orange-600 text-xl mr-3">⚠️</div>
+                    <div>
+                      <h3 class="font-semibold text-orange-800 mb-2">Violation Review Required</h3>
+                      <p class="text-sm text-orange-700">Review the reported post and decide on appropriate action.</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <form id="violationActionForm" class="space-y-4">
+                  {% csrf_token %}
+                  <div>
+                    <label class="block font-medium mb-3">Action Decision</label>
+                    <div class="border border-gray-200 rounded-lg p-4 space-y-3">
+                      <label class="flex items-start space-x-3 cursor-pointer">
+                        <input type="radio" name="action" value="dismiss" required class="mt-1">
+                        <div>
+                          <div class="font-medium">Dismiss Report</div>
+                          <p class="text-sm text-gray-600">No violation found, post is acceptable</p>
+                        </div>
+                      </label>
+                      <label class="flex items-start space-x-3 cursor-pointer">
+                        <input type="radio" name="action" value="warn" required class="mt-1">
+                        <div>
+                          <div class="font-medium text-yellow-700">Warn User</div>
+                          <p class="text-sm text-gray-600">Minor violation, send warning to user</p>
+                        </div>
+                      </label>
+                      <label class="flex items-start space-x-3 cursor-pointer">
+                        <input type="radio" name="action" value="remove_post" required class="mt-1">
+                        <div>
+                          <div class="font-medium text-orange-700">Remove Post</div>
+                          <p class="text-sm text-gray-600">Violation confirmed, remove post only</p>
+                        </div>
+                      </label>
+                      <label class="flex items-start space-x-3 cursor-pointer">
+                        <input type="radio" name="action" value="suspend_user" required class="mt-1">
+                        <div>
+                          <div class="font-medium text-red-700">Suspend User</div>
+                          <p class="text-sm text-gray-600">Serious violation, suspend user account</p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <div id="suspensionDaysDiv" class="hidden">
+                    <label for="suspension_days" class="block font-medium mb-2">Suspension Duration (Days)</label>
+                    <input type="number" id="suspension_days" name="suspension_days" min="1" max="365" 
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="e.g., 7">
+                  </div>
+                  
+                  <div>
+                    <label for="action_notes" class="block font-medium mb-2">Action Notes <span class="text-red-500">*</span></label>
+                    <textarea id="action_notes" name="admin_notes" rows="4" required 
+                              class="w-full border border-gray-300 rounded-lg px-3 py-2" 
+                              placeholder="Explain your decision..."></textarea>
+                  </div>
+                  
+                  <button type="submit" class="w-full bg-[#561c24] hover:bg-[#6d2631] text-white py-3 px-4 rounded-lg font-medium transition-colors">
+                    Submit Action
+                  </button>
+                </form>
+                
+                {% elif 'goods' in report.report_type|lower and 'services' in report.report_type|lower and report.status == 'resolved' %}
+                <!-- Show admin decision if already reviewed -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div class="flex items-start">
+                    <div class="text-blue-600 text-xl mr-3">📋</div>
+                    <div>
+                      <h3 class="font-semibold text-blue-800 mb-2">Action Completed</h3>
+                      <p class="text-sm text-blue-700">This report has been resolved.</p>
+                    </div>
+                  </div>
+                </div>
+                
+                {% elif report.report_type == 'driver_cancellation' and report.status == 'resolved' %}
+                <!-- Show admin decision if already reviewed -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div class="flex items-start">
+                    <div class="text-blue-600 text-xl mr-3">📋</div>
+                    <div>
+                      <h3 class="font-semibold text-blue-800 mb-2">Admin Decision Made</h3>
+                      {% if report.decision == 'unjustified' %}
+                        <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800 mb-2 inline-block">❌ UNJUSTIFIED</span>
+                        <p class="text-sm text-blue-700">This cancellation was marked as unjustified and has been added to driver's cancellation metrics.</p>
+                      {% elif report.decision == 'justified' %}
+                        <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800 mb-2 inline-block">✅ JUSTIFIED</span>
+                        <p class="text-sm text-blue-700">This cancellation was marked as justified and does not affect driver metrics.</p>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+                {% else %}
+                <!-- Regular status update form -->
+                <form id="updateStatusForm" class="space-y-4">
+                  {% csrf_token %}
+                  <div>
+                    <label for="status" class="block font-medium mb-2">Update Status</label>
+                    <select id="status" name="status" required class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#561c24] focus:border-transparent">
+                      <option value="pending" {% if report.status == 'pending' %}selected{% endif %}>Pending</option>
+                      <option value="investigating" {% if report.status == 'investigating' %}selected{% endif %}>Investigating</option>
+                      <option value="resolved" {% if report.status == 'resolved' %}selected{% endif %}>Resolved</option>
+                      <option value="dismissed" {% if report.status == 'dismissed' %}selected{% endif %}>Dismissed</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label for="admin_notes" class="block font-medium mb-2">Admin Notes</label>
+                    <textarea id="admin_notes" name="admin_notes" rows="4" 
+                              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#561c24] focus:border-transparent" 
+                              placeholder="Add notes about this report...">{{ report.admin_notes }}</textarea>
+                  </div>
+                  
+                  <button type="submit" class="w-full bg-[#561c24] hover:bg-[#6d2631] text-white py-2 px-4 rounded-lg font-medium transition-colors">
+                    Update Report
+                  </button>
+                </form>
+                {% endif %}
+                
+                <div class="mt-6 pt-6 border-t border-gray-200 space-y-3">
+                  {% if booking %}
+                    <a href="/tourpackage/viewtourpackage/?booking_id={{ booking.id }}" 
+                       class="block w-full text-center bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 px-4 rounded-lg transition-colors">
+                      View Booking Details
+                    </a>
+                  {% endif %}
+                  
+
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+  </main>
+
+  <!-- Confirmation Modal -->
+  <div id="confirmModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-50 flex justify-center items-center md:ml-64">
+    <div class="bg-white w-full max-w-md mx-auto rounded-xl border border-[#561c24] shadow-lg text-[#561c24] font-sans p-6 relative">
+      <div class="absolute top-4 right-4">
+        <button onclick="closeConfirmModal()" class="text-[#561c24] hover:text-red-600 text-2xl font-bold">&times;</button>
+      </div>
+      <h2 class="text-xl font-bold mb-3">Confirm Decision</h2>
+      <p id="confirmMessage" class="mb-2 text-sm text-gray-700"></p>
+      <div class="flex justify-end gap-4 mt-5">
+        <button type="button" onclick="closeConfirmModal()" class="px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 text-gray-800">Cancel</button>
+        <button type="button" id="confirmBtn" class="px-4 py-2 rounded-lg bg-[#561c24] hover:bg-[#6d2631] text-white">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success Modal -->
+  <div id="successModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-50 flex justify-center items-center md:ml-64">
+    <div class="bg-white w-full max-w-md mx-auto rounded-xl border border-[#561c24] shadow-lg text-[#561c24] font-sans p-6 relative">
+      <div class="absolute top-4 right-4">
+        <button onclick="closeSuccessModal()" class="text-[#561c24] hover:text-red-600 text-2xl font-bold">&times;</button>
+      </div>
+      <h2 class="text-xl font-bold mb-3">Success</h2>
+      <p id="successMessage" class="mb-2 text-sm text-gray-700"></p>
+      <div class="flex justify-end gap-4 mt-5">
+        <button type="button" onclick="closeSuccessModal()" class="px-4 py-2 rounded-lg bg-[#561c24] hover:bg-[#6d2631] text-white">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Modal -->
+  <div id="errorModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-50 flex justify-center items-center md:ml-64">
+    <div class="bg-white w-full max-w-md mx-auto rounded-xl border border-[#561c24] shadow-lg text-[#561c24] font-sans p-6 relative">
+      <div class="absolute top-4 right-4">
+        <button onclick="closeErrorModal()" class="text-[#561c24] hover:text-red-600 text-2xl font-bold">&times;</button>
+      </div>
+      <h2 class="text-xl font-bold mb-3">Error</h2>
+      <p id="errorMessage" class="mb-2 text-sm text-gray-700"></p>
+      <div class="flex justify-end gap-4 mt-5">
+        <button type="button" onclick="closeErrorModal()" class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Modal -->
+  <div id="imageModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-90 flex justify-center items-center" onclick="closeImageModal()">
+    <div class="relative max-w-4xl max-h-screen p-4">
+      <button onclick="closeImageModal()" class="absolute top-2 right-2 text-white text-4xl font-bold hover:text-gray-300">&times;</button>
+      <img id="modalImage" src="" alt="Full size" class="max-w-full max-h-screen object-contain">
+    </div>
+  </div>
+
+  <script>
+  let currentFormData = null;
+  let currentDecision = null;
+
+  function openImageModal(imageUrl) {
+    document.getElementById('modalImage').src = imageUrl;
+    document.getElementById('imageModal').classList.remove('hidden');
+  }
+
+  function closeImageModal() {
+    document.getElementById('imageModal').classList.add('hidden');
+  }
+
+  function showConfirmModal(message) {
+    document.getElementById('confirmMessage').textContent = message;
+    document.getElementById('confirmModal').classList.remove('hidden');
+  }
+
+  function closeConfirmModal() {
+    document.getElementById('confirmModal').classList.add('hidden');
+  }
+
+  function showSuccessModal(message) {
+    document.getElementById('successMessage').textContent = message;
+    document.getElementById('successModal').classList.remove('hidden');
+  }
+
+  function closeSuccessModal() {
+    document.getElementById('successModal').classList.add('hidden');
+    location.reload();
+  }
+
+  function showErrorModal(message) {
+    document.getElementById('errorMessage').textContent = message;
+    document.getElementById('errorModal').classList.remove('hidden');
+  }
+
+  function closeErrorModal() {
+    document.getElementById('errorModal').classList.add('hidden');
+  }
+
+  // Handle violation action form
+  const violationForm = document.getElementById('violationActionForm');
+  if (violationForm) {
+      const actionRadios = violationForm.querySelectorAll('input[name="action"]');
+      const suspensionDiv = document.getElementById('suspensionDaysDiv');
+      
+      actionRadios.forEach(radio => {
+          radio.addEventListener('change', function() {
+              if (this.value === 'suspend_user') {
+                  suspensionDiv.classList.remove('hidden');
+                  document.getElementById('suspension_days').required = true;
+              } else {
+                  suspensionDiv.classList.add('hidden');
+                  document.getElementById('suspension_days').required = false;
+              }
+          });
+      });
+      
+      violationForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          
+          const formData = new FormData(this);
+          const action = formData.get('action');
+          const notes = formData.get('admin_notes');
+          
+          if (!action || !notes.trim()) {
+              showErrorModal('Please select an action and provide notes.');
+              return;
+          }
+          
+          if (action === 'suspend_user' && !formData.get('suspension_days')) {
+              showErrorModal('Please specify suspension duration.');
+              return;
+          }
+          
+          currentFormData = formData;
+          
+          const actionMessages = {
+              'dismiss': 'Dismiss this report? No action will be taken.',
+              'warn': 'Send a warning to the user?',
+              'remove_post': 'Remove this post from the platform?',
+              'suspend_user': `Suspend user for ${formData.get('suspension_days')} days?`
+          };
+          
+          showConfirmModal(actionMessages[action]);
+      });
+  }
+
+  // Handle cancellation review form
+  const reviewForm = document.getElementById('cancellationReviewForm');
+  if (reviewForm) {
+      reviewForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          
+          const formData = new FormData(this);
+          const decision = formData.get('decision');
+          const notes = formData.get('admin_notes');
+          
+          if (!decision || !notes.trim()) {
+              showErrorModal('Please select a decision and provide review notes.');
+              return;
+          }
+          
+          currentFormData = formData;
+          currentDecision = decision;
+          
+          const confirmMessage = decision === 'unjustified' 
+              ? 'Are you sure you want to mark this as UNJUSTIFIED? This will add to driver\'s cancellation count and may lead to driver suspension.'
+              : 'Are you sure you want to mark this as JUSTIFIED? This will not affect driver metrics and no penalty for the driver.';
+              
+          showConfirmModal(confirmMessage);
+      });
+  }
+
+  // Handle regular status update form
+  const updateForm = document.getElementById('updateStatusForm');
+  if (updateForm) {
+      updateForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          
+          currentFormData = new FormData(this);
+          showConfirmModal('Are you sure you want to update this report status?');
+      });
+  }
+
+  // Confirm button handler
+  document.getElementById('confirmBtn').addEventListener('click', function() {
+      closeConfirmModal();
+      
+      if (violationForm && currentFormData && !currentDecision) {
+          // Handle violation action
+          const submitBtn = violationForm.querySelector('button[type="submit"]');
+          const originalText = submitBtn.innerHTML;
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = 'Processing...';
+          
+          const actionData = {
+              report_id: '{{ report.id }}',
+              action: currentFormData.get('action'),
+              admin_notes: currentFormData.get('admin_notes'),
+              suspension_days: currentFormData.get('suspension_days') || null,
+              post_id: '{{ report.related_booking_id }}',
+              user_id: '{{ report.related_user_id }}'
+          };
+          
+          fetch('/api/goods-services-reports/handle_goods_services_violation/', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+              },
+              body: JSON.stringify(actionData)
+          })
+          .then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  showSuccessModal(data.message || 'Action completed successfully!');
+              } else {
+                  showErrorModal('Error: ' + data.error);
+                  submitBtn.disabled = false;
+                  submitBtn.innerHTML = originalText;
+              }
+          })
+          .catch(error => {
+              console.error('Error:', error);
+              showErrorModal('An error occurred while processing the action.');
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = originalText;
+          });
+      } else if (reviewForm && currentDecision) {
+          // Handle cancellation review
+          const submitBtn = reviewForm.querySelector('button[type="submit"]');
+          const originalText = submitBtn.innerHTML;
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = 'Processing...';
+          
+          const reviewData = {
+              report_id: '{{ report.id }}',
+              decision: currentDecision,
+              admin_notes: currentFormData.get('admin_notes'),
+              admin_id: 'admin-user'
+          };
+          
+          fetch('/api/reports/review_driver_cancellation/', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+              },
+              body: JSON.stringify(reviewData)
+          })
+          .then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  let message = 'Decision submitted successfully! ' + data.message;
+                  if (data.driver_suspended) {
+                      message += ' ⚠️ DRIVER HAS BEEN SUSPENDED due to excessive cancellations.';
+                  }
+                  showSuccessModal(message);
+              } else {
+                  showErrorModal('Error: ' + data.error);
+                  submitBtn.disabled = false;
+                  submitBtn.innerHTML = originalText;
+              }
+          })
+          .catch(error => {
+              console.error('Error:', error);
+              showErrorModal('An error occurred while submitting the review.');
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = originalText;
+          });
+      } else if (updateForm) {
+          // Handle regular status update
+          fetch(window.location.href, {
+              method: 'POST',
+              body: currentFormData,
+              headers: {
+                  'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+              }
+          })
+          .then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  showSuccessModal('Report status updated successfully!');
+              } else {
+                  showErrorModal('Error: ' + data.error);
+              }
+          })
+          .catch(error => {
+              console.error('Error:', error);
+              showErrorModal('An error occurred while updating the report.');
+          });
+      }
+  });
+  </script>
+  <script src="{% static 'js/sidebar.js' %}"></script>
+</body>
+</html>
